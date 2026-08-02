@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/transport" },
+    { "path": "./packages/crypto" },
+    { "path": "./packages/tls" },
+    { "path": "./packages/http1" },
+    { "path": "./packages/http2" },
+    { "path": "./packages/profiles" },
+    { "path": "./packages/cookies" },
+    { "path": "./packages/fetch" },
+    { "path": "./packages/testing" },
+    { "path": "./packages/devtools" }
+  ]
+}
