@@ -1,0 +1,47 @@
+{
+  "name": "@browsercore/compression",
+  "version": "0.1.0",
+  "description": "Clean abstraction wrapping Node's native zlib APIs (gzip, deflate, brotli). HTTP layers call these methods — never node:zlib directly — so the backend is replaceable.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jverneuer/browsercore-compression.git"
+  },
+  "homepage": "https://github.com/jverneuer/browsercore-compression#readme",
+  "bugs": {
+    "url": "https://github.com/jverneuer/browsercore-compression/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
