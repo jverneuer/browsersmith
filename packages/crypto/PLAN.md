@@ -61,12 +61,22 @@ constants. These are thin wrappers over the methods from Step 3.
 Tests: assert the declared sizes match the real NIST/ITEF constants
 (AES-128-GCM: 16/12/16; AES-256-GCM: 32/12/16; ChaCha20-Poly1305: 32/12/16).
 
+## Step 6 — Signature verification
+
+Implement `verifySignature()` over `@browsercore/crypto`'s `node:crypto` primitives:
+
+1. Rehydrate a DER SPKI public key and dispatch on the signature scheme.
+2. Support ECDSA (P-256/SHA-256, P-384/SHA-384) and RSA-PSS (SHA-256/384, salt length 32).
+
+Tests: verify a known-good signature for each scheme; assert rejection on a flipped byte.
+
 ## Definition of done
 
-- [ ] `randomBytes` / `sha256` / `sha384` match `node:crypto` for known vectors.
-- [ ] `hkdf` matches RFC 5869 test vectors for SHA-256.
-- [ ] AEAD encrypt/decrypt round-trips for all three ciphers.
-- [ ] AEAD decryption throws `DecryptError` on tampered input or wrong AAD.
-- [ ] X25519 keygen/shared-secret match the RFC 7748 vector and are symmetric.
-- [ ] `AeadCipher` descriptors report correct sizes for each cipher.
-- [ ] Every test in `tests/` passes; `tsc --build` is clean.
+- [x] `randomBytes` / `sha256` / `sha384` match `node:crypto` for known vectors.
+- [x] `hkdf` matches RFC 5869 test vectors for SHA-256.
+- [x] AEAD encrypt/decrypt round-trips for all three ciphers.
+- [x] AEAD decryption throws `DecryptError` on tampered input or wrong AAD.
+- [x] X25519 keygen/shared-secret match the RFC 7748 vector and are symmetric.
+- [x] `AeadCipher` descriptors report correct sizes for each cipher.
+- [x] `verifySignature` verifies ECDSA P-256/384 and RSA-PSS/PKCS1 SHA-256/384 signatures.
+- [x] Every test in `tests/` passes; `tsc --build` is clean.

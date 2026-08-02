@@ -222,6 +222,46 @@ describe("AEAD: AES-128-GCM round-trips and authenticates", () => {
     });
 });
 
+describe("hkdf (RFC 5869) case 1 vector", () => {
+    const provider = new NodeCryptoProvider();
+
+    it("SHA-256 L=42 matches the RFC 5869 test vector", () => {
+        // RFC 5869 Appendix A.1 — Test Case 1 (SHA-256, L=42).
+        const ikm = new Uint8Array(22).fill(0x0b);
+        const salt = Uint8Array.from([
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0a, 0x0b, 0x0c,
+        ]);
+        const info = Uint8Array.from([
+            0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+            0xf8, 0xf9,
+        ]);
+        const expectedOkm = Uint8Array.from(
+            Buffer.from(
+                "3cb25f25faacd57a90434f64d0362f2a" +
+                "2d2d0a90cf1a5a4c5db02d56ecc4c5bf" +
+                "34007208d5b887185865",
+                "hex",
+            ),
+        );
+        const ours = provider.hkdf(SHA_256, salt, ikm, info, expectedOkm.length);
+        expect(ours).toHaveLength(expectedOkm.length);
+        expect(ours).toEqual(expectedOkm);
+
+        // Cross-check against node:crypto.hkdfSync as an independent oracle.
+        const node = canonicalize(
+            hkdfSync(
+                "sha256",
+                ikm as Buffer,
+                salt as Buffer,
+                info as Buffer,
+                expectedOkm.length,
+            ) as unknown as Uint8Array,
+        );
+        expect(ours).toEqual(node);
+    });
+});
+
 describe("AEAD: AES-256-GCM round-trips and authenticates", () => {
     const provider = new NodeCryptoProvider();
     const key = new Uint8Array(nodeRandomBytes(32));
@@ -240,6 +280,12 @@ describe("AEAD: AES-256-GCM round-trips and authenticates", () => {
         const ct = provider.aes256GcmEncrypt(key, nonce, plaintext, aad);
         ct[ct.length - 1]! ^= 0xff;
         expect(() => provider.aes256GcmDecrypt(key, nonce, ct, aad)).toThrow(DecryptError);
+    });
+
+    it("decrypt throws DecryptError when the AAD differs", () => {
+        const ct = provider.aes256GcmEncrypt(key, nonce, plaintext, aad);
+        const otherAad = new TextEncoder().encode("wrong-aad-256");
+        expect(() => provider.aes256GcmDecrypt(key, nonce, ct, otherAad)).toThrow(DecryptError);
     });
 });
 
@@ -261,6 +307,12 @@ describe("AEAD: ChaCha20-Poly1305 round-trips and authenticates", () => {
         const ct = provider.chacha20Poly1305Encrypt(key, nonce, plaintext, aad);
         ct[ct.length - 1]! ^= 0xff;
         expect(() => provider.chacha20Poly1305Decrypt(key, nonce, ct, aad)).toThrow(DecryptError);
+    });
+
+    it("decrypt throws DecryptError when the AAD differs", () => {
+        const ct = provider.chacha20Poly1305Encrypt(key, nonce, plaintext, aad);
+        const otherAad = new TextEncoder().encode("wrong-chacha-aad");
+        expect(() => provider.chacha20Poly1305Decrypt(key, nonce, ct, otherAad)).toThrow(DecryptError);
     });
 });
 
@@ -290,6 +342,35 @@ describe("X25519 key exchange", () => {
         const secret = provider.x25519SharedSecret(a.secretKey, b.publicKey);
         const allZero = secret.every((byte) => byte === 0);
         expect(allZero).toBe(false);
+    });
+
+    it("RFC 7748 Section 5.2: 1000-iteration scalar-mult vector", () => {
+        // RFC 7748 Appendix A.1 — the 1000-iteration X25519 test vector. We feed
+        // the published scalar + starting u-coordinate into our raw scalar-mult
+        // and iterate 1000 times; the result MUST equal the published value.
+        const scalar = Uint8Array.from(
+            Buffer.from(
+                "a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4",
+                "hex",
+            ),
+        );
+        let u = Uint8Array.from(
+            Buffer.from(
+                "e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c",
+                "hex",
+            ),
+        );
+        for (let i = 0; i < 1000; i++) {
+            u = provider.x25519SharedSecret(scalar, u);
+        }
+        const expected = Uint8Array.from(
+            Buffer.from(
+                "99d85aa6fc76c578b918479e31b26f6d8f98ee9378422677574508b60883a32e",
+                "hex",
+            ),
+        );
+        expect(u).toHaveLength(32);
+        expect(u).toEqual(expected);
     });
 });
 
