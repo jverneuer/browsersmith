@@ -1,5 +1,5 @@
 /**
- * @network/profiles — public API surface.
+ * @browsercore/profiles — public API surface.
  *
  * Pure data package: browser fingerprint definitions across TLS, HTTP/2, and
  * HTTP/1.1. No protocol implementation lives here — higher layers read these

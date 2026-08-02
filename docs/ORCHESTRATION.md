@@ -1,14 +1,14 @@
 # Orchestration Model
 
 This document describes the multi-agent orchestration system that builds and
-validates the `@network/*` packages. It is the contract the workflow implements.
+validates the `@browsercore/*` packages. It is the contract the workflow implements.
 
 ## Hierarchy
 
 ```
 Top Orchestrator  (workflow script — owns global plan + dependency graph)
   │
-  ├─ Package Orchestrator × 10   (one agent per @network/* package)
+  ├─ Package Orchestrator × 10   (one agent per @browsercore/* package)
   │     │
   │     ├─ Developer agent(s)   — implement the next chunk from PLAN.md
   │     └─ QA agent(s)          — typecheck + test the package, report pass/fail
@@ -55,7 +55,7 @@ Top Orchestrator  (workflow script — owns global plan + dependency graph)
 ## Dependency graph (dispatch order)
 
 ```
-Wave 1 (no @network deps):  profiles, cookies
+Wave 1 (no @browsercore deps):  profiles, cookies
 Wave 2 (deps from wave 1):  crypto, transport
 Wave 3 (deps from wave 2):  tls, http1, http2, testing, devtools
 Wave 4 (deps from wave 3):  fetch

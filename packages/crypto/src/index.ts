@@ -1,5 +1,5 @@
 /**
- * @network/crypto — public API surface.
+ * @browsercore/crypto — public API surface.
  *
  * A clean abstraction wrapping Node's native crypto APIs. The TLS implementation
  * calls these methods — never `node:crypto` directly — so the backend is

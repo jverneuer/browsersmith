@@ -1,4 +1,4 @@
-# @network/profiles
+# @browsercore/profiles
 
 Browser fingerprint definitions (TLS / HTTP/2 / HTTP/1.1). Pure data — no protocol implementation.
 
@@ -16,7 +16,7 @@ Define WHAT a browser fingerprint looks like so that higher layers (tls, http1, 
 ## Public API
 
 ```ts
-import { getProfile, listProfiles, registerProfile } from "@network/profiles";
+import { getProfile, listProfiles, registerProfile } from "@browsercore/profiles";
 
 const chrome = getProfile("chrome-140" as ProfileId);
 console.log(chrome.tls.cipherSuites); // ordered cipher list
@@ -45,7 +45,7 @@ registerProfile(myCustomProfile); // extensibility hook
 ## Dependency graph
 
 ```
-@network/profiles
+@browsercore/profiles
 ```
 
-No other `@network/*` packages and no Node built-ins are imported. This is a pure data package.
+No other `@browsercore/*` packages and no Node built-ins are imported. This is a pure data package.

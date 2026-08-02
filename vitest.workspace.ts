@@ -7,7 +7,7 @@ export default defineWorkspace([
   "packages/*",
   {
     test: {
-      name: "network-packages",
+      name: "browsercore-packages",
       root: ".",
       include: ["packages/**/tests/**/*.test.ts"],
       environment: "node",

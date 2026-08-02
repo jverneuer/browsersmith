@@ -1,5 +1,5 @@
 /**
- * Tests for @network/crypto.
+ * Tests for @browsercore/crypto.
  *
  * The TEST file may use node:crypto to compute expected values — that's fine.
  * The production code is what must route through the CryptoProvider abstraction.

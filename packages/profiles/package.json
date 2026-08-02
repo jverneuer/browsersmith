@@ -1,5 +1,5 @@
 {
-  "name": "@network/profiles",
+  "name": "@browsercore/profiles",
   "version": "0.1.0",
   "description": "Browser fingerprint definitions (TLS / HTTP/2 / HTTP/1.1). Pure data — no protocol implementation.",
   "license": "MIT",

@@ -1,5 +1,5 @@
 /**
- * Domain types for @network/profiles.
+ * Domain types for @browsercore/profiles.
  *
  * Pure data: this package defines WHAT a browser fingerprint looks like, never
  * HOW to emit it on the wire. Protocol implementations (tls, http1, http2) read

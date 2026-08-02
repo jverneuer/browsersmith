@@ -24,61 +24,61 @@ importers:
 
   packages/devtools:
     dependencies:
-      '@network/cookies':
+      '@browsercore/cookies':
         specifier: workspace:*
         version: link:../cookies
-      '@network/crypto':
+      '@browsercore/crypto':
         specifier: workspace:*
         version: link:../crypto
-      '@network/fetch':
+      '@browsercore/fetch':
         specifier: workspace:*
         version: link:../fetch
-      '@network/http1':
+      '@browsercore/http1':
         specifier: workspace:*
         version: link:../http1
-      '@network/http2':
+      '@browsercore/http2':
         specifier: workspace:*
         version: link:../http2
-      '@network/profiles':
+      '@browsercore/profiles':
         specifier: workspace:*
         version: link:../profiles
-      '@network/tls':
+      '@browsercore/tls':
         specifier: workspace:*
         version: link:../tls
-      '@network/transport':
+      '@browsercore/transport':
         specifier: workspace:*
         version: link:../transport
 
   packages/fetch:
     dependencies:
-      '@network/cookies':
+      '@browsercore/cookies':
         specifier: workspace:*
         version: link:../cookies
-      '@network/http1':
+      '@browsercore/http1':
         specifier: workspace:*
         version: link:../http1
-      '@network/http2':
+      '@browsercore/http2':
         specifier: workspace:*
         version: link:../http2
-      '@network/profiles':
+      '@browsercore/profiles':
         specifier: workspace:*
         version: link:../profiles
-      '@network/tls':
+      '@browsercore/tls':
         specifier: workspace:*
         version: link:../tls
-      '@network/transport':
+      '@browsercore/transport':
         specifier: workspace:*
         version: link:../transport
 
   packages/http1:
     dependencies:
-      '@network/transport':
+      '@browsercore/transport':
         specifier: workspace:*
         version: link:../transport
 
   packages/http2:
     dependencies:
-      '@network/transport':
+      '@browsercore/transport':
         specifier: workspace:*
         version: link:../transport
 
@@ -86,37 +86,37 @@ importers:
 
   packages/testing:
     dependencies:
-      '@network/cookies':
+      '@browsercore/cookies':
         specifier: workspace:*
         version: link:../cookies
-      '@network/crypto':
+      '@browsercore/crypto':
         specifier: workspace:*
         version: link:../crypto
-      '@network/fetch':
+      '@browsercore/fetch':
         specifier: workspace:*
         version: link:../fetch
-      '@network/http1':
+      '@browsercore/http1':
         specifier: workspace:*
         version: link:../http1
-      '@network/http2':
+      '@browsercore/http2':
         specifier: workspace:*
         version: link:../http2
-      '@network/profiles':
+      '@browsercore/profiles':
         specifier: workspace:*
         version: link:../profiles
-      '@network/tls':
+      '@browsercore/tls':
         specifier: workspace:*
         version: link:../tls
-      '@network/transport':
+      '@browsercore/transport':
         specifier: workspace:*
         version: link:../transport
 
   packages/tls:
     dependencies:
-      '@network/crypto':
+      '@browsercore/crypto':
         specifier: workspace:*
         version: link:../crypto
-      '@network/transport':
+      '@browsercore/transport':
         specifier: workspace:*
         version: link:../transport
 

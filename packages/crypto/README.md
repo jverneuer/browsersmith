@@ -1,4 +1,4 @@
-# @network/crypto
+# @browsercore/crypto
 
 A clean abstraction wrapping Node's native crypto APIs. Higher layers — especially
 TLS — call these methods so the crypto backend is replaceable.
@@ -24,7 +24,7 @@ production TLS implementation **never** calls `node:crypto` directly — it call
 ## Public API
 
 ```ts
-import { crypto, NodeCryptoProvider, CryptoProvider } from "@network/crypto";
+import { crypto, NodeCryptoProvider, CryptoProvider } from "@browsercore/crypto";
 
 // Use the default singleton (backed by node:crypto):
 const key = crypto.randomBytes(32);
@@ -55,8 +55,8 @@ const bytes = provider.randomBytes(16);
 ## Dependency graph
 
 ```
-@network/crypto
+@browsercore/crypto
   └─ node:crypto
 ```
 
-No other `@network/*` packages are imported.
+No other `@browsercore/*` packages are imported.

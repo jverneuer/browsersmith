@@ -1,5 +1,5 @@
 /**
- * Typed errors for @network/crypto.
+ * Typed errors for @browsercore/crypto.
  *
  * Errors are part of the API — every failure mode is an explicit type so callers
  * can match on `kind` instead of parsing messages.

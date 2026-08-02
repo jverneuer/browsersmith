@@ -1,5 +1,5 @@
 /**
- * Concrete {@link AeadCipher} descriptors for @network/crypto.
+ * Concrete {@link AeadCipher} descriptors for @browsercore/crypto.
  *
  * These are thin wrappers over the node:crypto AEAD primitives (imported from
  * `crypto.ts` — this file does NOT import `node:crypto` itself). Higher layers

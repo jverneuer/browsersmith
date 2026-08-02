@@ -1,4 +1,4 @@
-# @network/profiles — Implementation Plan
+# @browsercore/profiles — Implementation Plan
 
 Pure data package describing browser fingerprints. Implement in this order; each
 step is independently testable.

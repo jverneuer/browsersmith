@@ -1,4 +1,4 @@
-# @network/crypto — Implementation Plan
+# @browsercore/crypto — Implementation Plan
 
 This package is the cryptographic foundation everything else builds on. Implement
 in this order; each step is independently testable.

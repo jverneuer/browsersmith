@@ -1,5 +1,5 @@
 /**
- * Domain types for @network/crypto.
+ * Domain types for @browsercore/crypto.
  *
  * This package owns NO knowledge of TLS handshakes, key schedules, or wire formats.
  * It is a pure cryptographic primitive abstraction — randomness, hashing, key

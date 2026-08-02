@@ -176,10 +176,10 @@ adapts. The protocol state machines stay I/O-free so they're unit-testable.
 **Within this repo**, the dependency graph flows upward only — never sideways or downward:
 
 ```
-@network/fetch
-  └─ @network/http2  @network/http1  @network/cookies  @network/profiles
-        └─ @network/tls
-              └─ @network/crypto  @network/transport
+@browsercore/fetch
+  └─ @browsercore/http2  @browsercore/http1  @browsercore/cookies  @browsercore/profiles
+        └─ @browsercore/tls
+              └─ @browsercore/crypto  @browsercore/transport
                     └─ node:net / node:crypto
 ```
 

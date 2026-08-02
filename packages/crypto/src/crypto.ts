@@ -1,5 +1,5 @@
 /**
- * Core crypto abstraction for @network/crypto.
+ * Core crypto abstraction for @browsercore/crypto.
  *
  * The TLS implementation calls these methods — never `node:crypto` directly — so
  * the backend is replaceable (e.g. a WebCrypto provider, an HSM, or a test double).

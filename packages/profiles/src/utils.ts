@@ -1,5 +1,5 @@
 /**
- * Small shared helpers for @network/profiles.
+ * Small shared helpers for @browsercore/profiles.
  *
  * Kept dependency-free so every package can copy the pattern without pulling in
  * cross-package imports.

@@ -1,5 +1,5 @@
 {
-  "name": "@network/root",
+  "name": "@browsercore/root",
   "version": "0.0.0",
   "private": true,
   "description": "Modular, extensible TypeScript networking stack implementing protocol layers in user space.",

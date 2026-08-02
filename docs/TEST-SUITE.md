@@ -1,6 +1,6 @@
-# @network/testing — Test Suite Specification
+# @browsercore/testing — Test Suite Specification
 
-> Canonical, source-of-truth specification for the `@network/testing` package.
+> Canonical, source-of-truth specification for the `@browsercore/testing` package.
 > Every test case the monorepo must satisfy lives here, organized into 17
 > categories. The implementation in `packages/testing/src/categories/` models
 > these categories as typed constants and vitest stubs; this document is the
@@ -8,9 +8,9 @@
 
 ## Purpose
 
-`@network/testing` exists to prove that the protocol stacks (`@network/tls`,
-`@network/http1`, `@network/http2`, `@network/cookies`, `@network/profiles`,
-`@network/fetch`) behave **identically to a selected real browser** — and that
+`@browsercore/testing` exists to prove that the protocol stacks (`@browsercore/tls`,
+`@browsercore/http1`, `@browsercore/http2`, `@browsercore/cookies`, `@browsercore/profiles`,
+`@browsercore/fetch`) behave **identically to a selected real browser** — and that
 this equivalence is never silently broken. The 17 categories below progress from
 low-level byte correctness up through real-world interoperability and regression
 guards.

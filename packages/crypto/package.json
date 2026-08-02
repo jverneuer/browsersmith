@@ -1,5 +1,5 @@
 {
-  "name": "@network/crypto",
+  "name": "@browsercore/crypto",
   "version": "0.1.0",
   "description": "Clean abstraction wrapping Node's native crypto APIs. The TLS implementation calls these methods — never node:crypto directly — so the backend is replaceable.",
   "license": "MIT",

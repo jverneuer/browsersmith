@@ -1,5 +1,5 @@
 /**
- * Typed errors for @network/profiles.
+ * Typed errors for @browsercore/profiles.
  *
  * Errors are part of the API — callers match on `kind` instead of parsing messages.
  */

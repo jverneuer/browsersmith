@@ -1,4 +1,4 @@
-# curl-impersonate → @network/* mapping
+# curl-impersonate → @browsercore/* mapping
 
 [curl-impersonate](https://github.com/lwthiker/curl-impersonate) is a patched build of
 `curl` that replays a real browser's TLS + HTTP/2 handshake so that automated clients
@@ -7,7 +7,7 @@ the wire protocol. It impersonates Chrome, Edge, Safari and Firefox by swapping 
 browser's actual TLS library (BoringSSL for Chrome/Edge, NSS for Firefox), reordering
 TLS extensions, and replaying browser-specific HTTP/2 SETTINGS.
 
-**We do not need it.** Our `@network/*` stack generates those same bytes natively from a
+**We do not need it.** Our `@browsercore/*` stack generates those same bytes natively from a
 `BrowserProfile`. This document maps every curl-impersonate use case and capability to the
 construct in our stack that replaces it, so the project can drop the external binary
 dependency with zero loss of fingerprinting coverage.
@@ -36,7 +36,7 @@ field our `BrowserProfile` already carries (see `packages/profiles/src/types.ts`
 | HTTP/2 max frame size | patched curl | `Http2Profile.maxFrameSize` |
 | HTTP/2 header table size | patched curl | `Http2Profile.headerTableSize` |
 | HTTP/2 stream priority/weight | patched curl | `Http2Profile.weight` / `Http2Profile.priority` |
-| HTTP/2 pseudo-header order | `CURLOPT_HTTP2_PSEUDO_HEADERS_ORDER` | `@network/http2` frame builder |
+| HTTP/2 pseudo-header order | `CURLOPT_HTTP2_PSEUDO_HEADERS_ORDER` | `@browsercore/http2` frame builder |
 | HTTP/1.1 default headers + order | `-H` wrapper flags | `Http1Profile.defaultHeaders` + `headerOrder` |
 | Accept-Encoding | `-H` wrapper flags | `Http1Profile.acceptEncoding` |
 | Connection header | `-H` wrapper flags | `Http1Profile.connection` |
@@ -53,8 +53,8 @@ to Chrome's, so the JA3/JA4 hash matches a real browser and the request is allow
 **Our stack:** build the handshake from the matching profile and send it over a real socket.
 
 ```
-import { chrome140 } from "@network/profiles";
-import { connectTls } from "@network/tls";
+import { chrome140 } from "@browsercore/profiles";
+import { connectTls } from "@browsercore/tls";
 
 const conn = await connectTls({
   transport: tcpSocket,
@@ -74,18 +74,18 @@ golden captures in `packages/testing/captures/`.
 **curl-impersonate:** `curl_ff109` sends Firefox's exact HTTP/2 SETTINGS payload and
 WINDOW_UPDATE cadence.
 
-**Our stack:** the profile's HTTP/2 section is serialized by `@network/http2`.
+**Our stack:** the profile's HTTP/2 section is serialized by `@browsercore/http2`.
 
 ```
-import { buildClientHello } from "@network/tls";
-import { connectHttp2 } from "@network/http2";
+import { buildClientHello } from "@browsercore/tls";
+import { connectHttp2 } from "@browsercore/http2";
 
 // settings frame bytes are deterministic from the profile:
 const settings = chrome140.http2.settings; // { headerTableSize, initialWindowSize, ... }
 const conn = await connectHttp2({ socket: tlsConn, profile: chrome140.http2 });
 ```
 
-`@network/http2` already serializes SETTINGS frames byte-identical to the layout Node's own
+`@browsercore/http2` already serializes SETTINGS frames byte-identical to the layout Node's own
 http2 stack accepts (verified by `compare-node-http.test.ts`). The profile supplies the
 browser-specific numbers; the serializer supplies correct framing.
 
@@ -99,7 +99,7 @@ browser-specific numbers; the serializer supplies correct framing.
 a patched curl.
 
 ```
-import { chrome140, chrome139, firefox128, firefox135, safari18, edge140 } from "@network/profiles";
+import { chrome140, chrome139, firefox128, firefox135, safari18, edge140 } from "@browsercore/profiles";
 ```
 
 The profile is pure data (`cipherSuites: [...]`, `extensionOrder: [...]`, `settings: {...}`),
@@ -111,12 +111,12 @@ so it is diffable, reviewable, and testable — unlike a patched TLS library.
 only to recognized clients.
 
 **Our stack:** same capability, controlled by which profile you attach to the connection.
-`@network/fetch` (`packages/fetch/src/client.ts`, just implemented) applies the profile end to
+`@browsercore/fetch` (`packages/fetch/src/client.ts`, just implemented) applies the profile end to
 end — TLS handshake, ALPN-driven protocol selection, and HTTP/1.1 vs HTTP/2 header application
 — from a single `BrowserProfile`.
 
 ```
-import { FetchClient } from "@network/fetch";
+import { FetchClient } from "@browsercore/fetch";
 const client = new FetchClient({ profile: chrome140 });
 const res = await client.fetch("https://example.com"); // full impersonation, no binary
 ```
@@ -127,7 +127,7 @@ const res = await client.fetch("https://example.com"); // full impersonation, no
 env var so existing libcurl-based programs impersonate without code changes.
 
 **Our stack:** not a use case we target. We are a TypeScript networking stack, not a C ABI
-shim. If a JS/TS program wants impersonation it uses `@network/fetch` directly (UC-4). If a
+shim. If a JS/TS program wants impersonation it uses `@browsercore/fetch` directly (UC-4). If a
 non-JS program needs it, that program's concern is outside this monorepo's scope — and
 curl-impersonate remains the right tool for retrofitting *C* programs.
 
@@ -180,8 +180,8 @@ curl-impersonate conflates two things: **(a)** a *database of browser fingerprin
 
 - **(a) the fingerprint database** → `BrowserProfile` objects in `packages/profiles`, one per
   browser/version, validated against golden captures.
-- **(b) the replay mechanism** → `@network/tls` `buildClientHello`, `@network/http2` SETTINGS
-  serialization, `@network/http1` header application, composed by `@network/fetch`.
+- **(b) the replay mechanism** → `@browsercore/tls` `buildClientHello`, `@browsercore/http2` SETTINGS
+  serialization, `@browsercore/http1` header application, composed by `@browsercore/fetch`.
 
 The binary is redundant. Drop `CurlImpersonateProvider` to optional, keep the frozen captures
 as goldens, and add a `buildExpectedCapture(profile)` path that constructs the reference bytes

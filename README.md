@@ -1,4 +1,4 @@
-# @network — a modular TypeScript networking stack
+# @browsercore — a modular TypeScript networking stack
 
 A complete, modular networking stack written entirely in TypeScript. Every protocol layer
 above the transport is owned and implemented in user space, giving you full observability and
@@ -15,24 +15,24 @@ Implemented bottom-up. Each package is independently testable, versionable, and 
 
 | Package | Responsibility | Depends on |
 | --- | --- | --- |
-| `@network/transport` | Byte-stream transport (TCP, DNS, backpressure) | `node:net` |
-| `@network/crypto` | Crypto primitives abstraction | `node:crypto` |
-| `@network/tls` | TLS 1.3/1.2 client (record layer, handshake, key schedule) | `transport`, `crypto` |
-| `@network/http1` | HTTP/1.1 over any duplex stream | `transport` |
-| `@network/http2` | HTTP/2 framing + HPACK + flow control | `transport` |
-| `@network/profiles` | Browser fingerprint definitions (Chrome, Firefox, Safari, Edge) | _(none)_ |
-| `@network/cookies` | RFC 6256 cookie jar | _(none)_ |
-| `@network/fetch` | Developer-facing API composing everything above | all of the above |
-| `@network/testing` | RFC compliance, golden packets, benchmarking | all packages |
-| `@network/devtools` | Packet inspector, visualizers, CLI | all packages |
+| `@browsercore/transport` | Byte-stream transport (TCP, DNS, backpressure) | `node:net` |
+| `@browsercore/crypto` | Crypto primitives abstraction | `node:crypto` |
+| `@browsercore/tls` | TLS 1.3/1.2 client (record layer, handshake, key schedule) | `transport`, `crypto` |
+| `@browsercore/http1` | HTTP/1.1 over any duplex stream | `transport` |
+| `@browsercore/http2` | HTTP/2 framing + HPACK + flow control | `transport` |
+| `@browsercore/profiles` | Browser fingerprint definitions (Chrome, Firefox, Safari, Edge) | _(none)_ |
+| `@browsercore/cookies` | RFC 6256 cookie jar | _(none)_ |
+| `@browsercore/fetch` | Developer-facing API composing everything above | all of the above |
+| `@browsercore/testing` | RFC compliance, golden packets, benchmarking | all packages |
+| `@browsercore/devtools` | Packet inspector, visualizers, CLI | all packages |
 
 ### Dependency graph
 
 ```
-@network/fetch
-  └─ @network/http2   @network/http1   @network/cookies   @network/profiles
-        └─ @network/tls
-              └─ @network/crypto   @network/transport
+@browsercore/fetch
+  └─ @browsercore/http2   @browsercore/http1   @browsercore/cookies   @browsercore/profiles
+        └─ @browsercore/tls
+              └─ @browsercore/crypto   @browsercore/transport
                     └─ node:net / node:crypto
 ```
 
@@ -41,7 +41,7 @@ Edges point upward only — a package never imports from anything above it.
 ## Quick start
 
 ```ts
-import { fetch } from "@network/fetch";
+import { fetch } from "@browsercore/fetch";
 
 const response = await fetch("https://example.com", {
     profile: "chrome-140",
@@ -60,16 +60,16 @@ console.log(response.status, await response.text());
 ├── CODING_STANDARDS.md     # TypeScript rules every package follows
 ├── VISION.md               # project vision and scope
 └── packages/
-    ├── transport/   # @network/transport
-    ├── crypto/      # @network/crypto
-    ├── tls/         # @network/tls
-    ├── http1/       # @network/http1
-    ├── http2/       # @network/http2
-    ├── profiles/    # @network/profiles
-    ├── cookies/     # @network/cookies
-    ├── fetch/       # @network/fetch
-    ├── testing/     # @network/testing
-    └── devtools/    # @network/devtools
+    ├── transport/   # @browsercore/transport
+    ├── crypto/      # @browsercore/crypto
+    ├── tls/         # @browsercore/tls
+    ├── http1/       # @browsercore/http1
+    ├── http2/       # @browsercore/http2
+    ├── profiles/    # @browsercore/profiles
+    ├── cookies/     # @browsercore/cookies
+    ├── fetch/       # @browsercore/fetch
+    ├── testing/     # @browsercore/testing
+    └── devtools/    # @browsercore/devtools
 ```
 
 ## Conventions
