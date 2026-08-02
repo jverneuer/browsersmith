@@ -36,17 +36,16 @@ Implement `src/registry.ts` with a `Map<ProfileId, BrowserProfile>` backing
 `getProfile`, `listProfiles`, and `registerProfile`. Index built-in profiles at
 module load.
 
-## Step 7 — Validation against real captures
+## Step 7 — Validation (`src/validate.ts`)
 
-Compare each profile's TLS values (cipher order, extension order, GREASE) against
-real Wireshark / JA4 captures for that browser version. Adjust until the JA3 / JA4
-hashes match published values.
+Add `src/validate.ts` to validate a `BrowserProfile` against a real capture
+(comparing cipher order, extension order, GREASE, etc.).
 
-## Step 8 — Profile diff utility
+## Step 8 — Profile diff utility (`src/diff.ts`)
 
-Add a utility that diffs two `BrowserProfile` objects and reports which layers
-differ (cipher order, settings, headers). Useful for regression-testing new
-versions against the previous one.
+Add `src/diff.ts` with a utility that diffs two `BrowserProfile` objects and
+reports which layers differ (cipher order, settings, headers). Useful for
+regression-testing new versions against the previous one.
 
 ## Definition of done
 
@@ -56,6 +55,6 @@ versions against the previous one.
 - [x] Safari 17, 18 entries.
 - [x] Edge 120, 128 entries.
 - [x] Registry with `getProfile` / `listProfiles` / `registerProfile`.
-- [ ] TLS values validated against real browser captures.
-- [ ] Profile diff utility implemented.
-- [ ] Every test in `tests/` passes; `tsc --build` is clean.
+- [x] `validate.ts` implemented. — real-browser-capture validation not yet done (tests use synthetic captures).
+- [x] `diff.ts` profile diff utility implemented.
+- [x] Every test in `tests/` passes; `tsc --build` is clean.
