@@ -19,6 +19,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+    assertNever,
     compression,
     NodeZlibCompressionProvider,
     SUPPORTED_ENCODINGS,
@@ -26,6 +27,8 @@ import {
     DecompressionError,
     ensureCompressionError,
 } from "../src/index.js";
+// `toError` is internal (not re-exported) but exercised here for coverage.
+import { toError } from "../src/errors.js";
 
 /** Deterministic payload: byte[i] = i % 256 (reproducible, never random). */
 function detBuffer(length: number): Uint8Array {
@@ -230,5 +233,48 @@ describe("ensureCompressionError", () => {
         const wrapped = ensureCompressionError("boom", "br");
         expect(wrapped).toBeInstanceOf(DecompressionError);
         expect(wrapped.cause).toBeInstanceOf(Error);
+    });
+});
+
+describe("toError (internal)", () => {
+    it("passes through an existing Error", () => {
+        const err = new Error("boom");
+        expect(toError(err)).toBe(err);
+    });
+
+    it("wraps a string as an Error", () => {
+        const err = toError("boom");
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toBe("boom");
+    });
+
+    it("formats a non-error, non-string value as 'unknown error'", () => {
+        const err = toError(42);
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toBe("unknown error");
+    });
+});
+
+describe("decompress deflate error rethrow", () => {
+    it("rethrows a non-DecompressionError thrown by inflate", () => {
+        // The deflate branch falls back to raw inflate ONLY when inflate throws
+        // a DecompressionError. Any other error type must propagate unchanged.
+        // Line 104 (the `throw zlibErr` branch) is otherwise unreachable with
+        // the real zlib backend, so we inject a misbehaving inflate.
+        const provider = new (class extends NodeZlibCompressionProvider {
+            public override inflate(): Uint8Array {
+                throw new Error("not a DecompressionError");
+            }
+        })();
+        const raw = canonicalize(deflateRawSync(detBuffer(64)));
+        expect(() => provider.decompress(raw, "deflate")).toThrow("not a DecompressionError");
+    });
+});
+
+describe("assertNever", () => {
+    it("throws for any value handed to the never branch", () => {
+        // Cast: in correct usage the compiler guarantees `x` is `never`; here we
+        // simulate the default branch receiving a value it should never see.
+        expect(() => assertNever("surprise" as never)).toThrow("Unexpected value");
     });
 });
