@@ -2,6 +2,14 @@
   "name": "@browsercore/crypto",
   "version": "0.1.0",
   "description": "Clean abstraction wrapping Node's native crypto APIs. The TLS implementation calls these methods — never node:crypto directly — so the backend is replaceable.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jverneuer/browsercore-crypto.git"
+  },
+  "homepage": "https://github.com/jverneuer/browsercore-crypto#readme",
+  "bugs": {
+    "url": "https://github.com/jverneuer/browsercore-crypto/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
