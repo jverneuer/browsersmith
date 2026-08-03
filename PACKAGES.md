@@ -42,7 +42,7 @@ published independently under the `@browsercore/*` scope and composed by the
 
 | package | role |
 | --- | --- |
-| **`browsersmith`** ([repo](https://github.com/jverneuer/browsercore)) | *Batteries-included* one-install package that wires the stack above into a single browser-identical `fetch()`. It holds no protocol logic of its own — just `src/index.ts` (a configured `fetch`), `src/profiles.ts` (preset fingerprints), and `src/crawl.ts` (a higher-level crawl helper) — and depends on every `@browsercore/*` package above. |
+| **`browsersmith`** ([repo](https://github.com/jverneuer/browsersmith)) | *Batteries-included* one-install package that wires the stack above into a single browser-identical `fetch()`. It holds no protocol logic of its own — just `src/index.ts` (a configured `fetch`), `src/profiles.ts` (preset fingerprints), and `src/crawl.ts` (a higher-level crawl helper) — and depends on every `@browsercore/*` package above. |
 
 ## Dependency direction
 
