@@ -19,6 +19,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint --type-aware src/ tests/",
     "test": "vitest run",
     "test:watch": "vitest",
     "example": "tsx",
@@ -36,7 +37,9 @@
     "@browsercore/transport": "^0.1.3"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.1.2",
+    "oxlint": "^1.76.0",
+    "oxlint-tsgolint": "7.0.2001",
     "tsx": "^4.19.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"

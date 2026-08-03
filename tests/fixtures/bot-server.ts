@@ -20,9 +20,7 @@
  * request AND the recorded signals match a browser fingerprint.
  */
 
-import type { IncomingMessage, Server, ServerResponse, RequestListener } from "node:http";
-import { createServer } from "node:http";
-import { EventEmitter } from "node:events";
+import { createServer, type IncomingMessage, type Server, type ServerResponse, type RequestListener } from "node:http";
 
 /** Port the fixture listens on by default in examples and tests. */
 export const BOT_PORT = 48171;
@@ -72,12 +70,10 @@ export interface RecordedSignal {
  */
 export class SignalLog {
     private readonly entries: RecordedSignal[] = [];
-    readonly events = new EventEmitter();
 
     /** Record one observed request. */
     record(signal: RecordedSignal): void {
         this.entries.push(signal);
-        this.events.emit("signal", signal);
     }
 
     /** All recorded signals, in arrival order. */
@@ -92,7 +88,7 @@ export class SignalLog {
 
     /** The last recorded signal, or undefined. */
     last(): RecordedSignal | undefined {
-        return this.entries[this.entries.length - 1];
+        return this.entries.at(-1);
     }
 
     /** Clear the log (call between test cases). */
@@ -143,8 +139,9 @@ function headerOrderMatches(received: readonly string[]): boolean {
     // key on the relative ordering of the canonical browser headers.
     let searchFrom = 0;
     for (const expected of EXPECTED_HEADER_ORDER) {
+        const from = searchFrom;
         const idx = received.findIndex(
-            (h, i) => i >= searchFrom && h.toLowerCase() === expected,
+            (h, i) => i >= from && h.toLowerCase() === expected,
         );
         if (idx === -1) {
             return false;
@@ -311,7 +308,11 @@ export async function startBotServer(
     port: number = 0,
 ): Promise<{ server: Server; state: FixtureState; port: number }> {
     const server = createServer(botDetectionFixture(state));
-    await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+    await new Promise<void>((resolve) => {
+        server.listen(port, "127.0.0.1", () => {
+            resolve();
+        });
+    });
     const addr = server.address();
     const bound = typeof addr === "object" && addr !== null ? addr.port : port;
     return { server, state, port: bound };
@@ -319,5 +320,9 @@ export async function startBotServer(
 
 /** Stop a server returned by {@link startBotServer}. */
 export async function stopBotServer(server: Server): Promise<void> {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>((resolve) => {
+        server.close(() => {
+            resolve();
+        });
+    });
 }

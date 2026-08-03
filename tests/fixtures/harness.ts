@@ -7,10 +7,8 @@
  * in `beforeEach` and {@link teardownHarness} in `afterEach`.
  */
 
-import { createClient } from "@browsercore/fetch";
-import type { FetchClient, FetchOptions } from "@browsercore/fetch";
-import { createCookieJar } from "@browsercore/cookies";
-import type { CookieJar } from "@browsercore/cookies";
+import { createClient, type FetchClient, type FetchOptions } from "@browsercore/fetch";
+import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import {
     startBotServer,

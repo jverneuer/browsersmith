@@ -22,6 +22,7 @@ import type { Transport, TransportId, TransportState, CloseReason } from "@brows
 let counter = 0;
 
 /** A Transport backed by a raw node:net Socket speaking plain HTTP/1.1. */
+// oxlint-disable-next-line unicorn/prefer-event-target -- Transport contractually extends EventEmitter (see @browsercore/transport); EventTarget can't replace it.
 export class LoopbackTransport extends EventEmitter implements Transport {
     readonly id: TransportId;
     private readonly socket: Socket;
@@ -44,11 +45,11 @@ export class LoopbackTransport extends EventEmitter implements Transport {
         socket.on("data", (data: Buffer) => {
             // If a read() is pending, hand the chunk straight to it; else queue.
             const waiter = this.waiters.shift();
-            if (waiter !== undefined) {
-                waiter(new Uint8Array(data));
-            } else {
+            if (waiter === undefined) {
                 this.readQueue.push(new Uint8Array(data));
                 this.emit("data", new Uint8Array(data));
+            } else {
+                waiter(new Uint8Array(data));
             }
         });
         socket.on("close", () => {
@@ -75,9 +76,9 @@ export class LoopbackTransport extends EventEmitter implements Transport {
         return this.stateValue;
     }
 
-    async write(data: Uint8Array): Promise<void> {
+    write(data: Uint8Array): Promise<void> {
         if (this.socket.destroyed) {
-            throw new Error("transport not open");
+            return Promise.reject(new Error("transport not open"));
         }
         return new Promise<void>((resolve, reject) => {
             this.socket.write(Buffer.from(data), (err) => {
@@ -90,10 +91,10 @@ export class LoopbackTransport extends EventEmitter implements Transport {
         });
     }
 
-    async read(): Promise<Uint8Array> {
+    read(): Promise<Uint8Array> {
         const queued = this.readQueue.shift();
         if (queued !== undefined) {
-            return queued;
+            return Promise.resolve(queued);
         }
         return new Promise<Uint8Array>((resolve, reject) => {
             this.waiters.push(resolve);
@@ -101,7 +102,7 @@ export class LoopbackTransport extends EventEmitter implements Transport {
         });
     }
 
-    async close(reason?: CloseReason): Promise<void> {
+    close(reason?: CloseReason): Promise<void> {
         this.stateValue = {
             state: "closing",
         };
@@ -113,6 +114,7 @@ export class LoopbackTransport extends EventEmitter implements Transport {
             reason: reason ?? { kind: "client_close" },
         };
         this.emit("close", true);
+        return Promise.resolve();
     }
 }
 

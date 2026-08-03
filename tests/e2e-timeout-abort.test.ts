@@ -36,7 +36,9 @@ describe("e2e: timeout + abort", () => {
         const controller = new AbortController();
         const promise = fetchBehavior(bh, "/slow?ms=500", { signal: controller.signal });
         // Abort shortly after dispatch.
-        setTimeout(() => controller.abort(), 30);
+        setTimeout(() => {
+            controller.abort();
+        }, 30);
         await expect(promise).rejects.toBeInstanceOf(FetchError);
     });
 

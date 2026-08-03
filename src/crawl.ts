@@ -7,10 +7,8 @@
  * dedupe, and queues; this gives you the browsercore primitives in one call.
  */
 
-import { createClient } from "@browsercore/fetch";
-import type { FetchResponse, FetchOptions } from "@browsercore/fetch";
-import type { CookieJar } from "@browsercore/cookies";
-import { createCookieJar } from "@browsercore/cookies";
+import { createClient, type FetchResponse, type FetchOptions } from "@browsercore/fetch";
+import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { CHROME_140 } from "./profiles.js";
 
@@ -47,7 +45,9 @@ function sleep(ms: number): Promise<void> {
     if (ms <= 0) {
         return Promise.resolve();
     }
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+    });
 }
 
 /**
@@ -78,7 +78,7 @@ export async function crawl(
     const timeoutMs = options?.timeoutMs;
     const client = createClient({ profile, cookieJar: jar });
 
-    const results: CrawlResult[] = new Array(urls.length);
+    const results: CrawlResult[] = Array.from({ length: urls.length });
     // Process in batches of `concurrency` per host. Simple and polite.
     let cursor = 0;
     async function worker(): Promise<void> {
@@ -92,7 +92,7 @@ export async function crawl(
             try {
                 const merged: FetchOptions = {
                     ...options?.fetchOptions,
-                    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+                    ...(timeoutMs === undefined ? {} : { timeoutMs }),
                 };
                 const response = await client.fetch(url, merged);
                 results[index] = {

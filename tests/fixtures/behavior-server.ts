@@ -20,7 +20,11 @@ import { gzipSync, deflateSync } from "node:zlib";
 /** Start the behavior fixture on an ephemeral port. Returns server + baseUrl. */
 export async function startBehaviorServer(): Promise<{ server: Server; baseUrl: string; port: number }> {
     const server = createServer(handler);
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => {
+            resolve();
+        });
+    });
     const addr = server.address();
     const port = typeof addr === "object" && addr !== null ? addr.port : 0;
     return { server, baseUrl: `http://localhost:${port}`, port };
@@ -28,7 +32,11 @@ export async function startBehaviorServer(): Promise<{ server: Server; baseUrl: 
 
 /** Stop the behavior fixture. */
 export async function stopBehaviorServer(server: Server): Promise<void> {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>((resolve) => {
+        server.close(() => {
+            resolve();
+        });
+    });
 }
 
 /** Send a JSON response. */
@@ -92,7 +100,9 @@ const handler: RequestListener = (req: IncomingMessage, res: ServerResponse): vo
     if (url.startsWith("/slow")) {
         const parsed = new URL(url, "http://x");
         const ms = Number(parsed.searchParams.get("ms") ?? "100");
-        setTimeout(() => sendJson(res, 200, { waited: ms }), ms);
+        setTimeout(() => {
+            sendJson(res, 200, { waited: ms });
+        }, ms);
         return;
     }
     if (url === "/echo-headers") {
