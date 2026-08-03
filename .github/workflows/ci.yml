@@ -46,10 +46,6 @@ jobs:
               CHANGED="false"
             fi
           fi
-          # Also (re)publish if this exact version isn't on npm yet (e.g. after an unpublish).
-          if [ "$CHANGED" = "false" ] && ! npm view "$CUR_NAME@$CUR_VER" version >/dev/null 2>&1; then
-            CHANGED="true"
-          fi
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
           echo "$CUR_NAME@$CUR_VER (previous: ${PREV_NAME:-<none>}@${PREV_VER:-<none>}) — changed: $CHANGED"
 

@@ -1,0 +1,49 @@
+name: Republish browsersmith (one-shot)
+
+# Auto-republishes browsersmith@0.0.1 once npm's 24h post-unpublish cooldown
+# has lifted (unpublish was 2026-08-03 16:21 UTC; cooldown ends ~2026-08-04 16:21 UTC),
+# then deletes itself so the schedule does not recur. Also runnable manually via
+# the "Run workflow" button (workflow_dispatch) as a fallback if the schedule is
+# delayed or skipped.
+on:
+  schedule:
+    # 2026-08-04 16:30 UTC — minute 30, hour 16, day 4, month 8.
+    - cron: '30 16 4 8 *'
+  workflow_dispatch:
+
+jobs:
+  republish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+      - run: npm install
+      - run: npm run build
+      - name: Publish to npm (if not already published)
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          NAME=$(node -p "require('./package.json').name")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION already on npm — nothing to publish"
+            exit 0
+          fi
+          npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Self-remove this one-shot workflow (publish succeeded)
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/republish.yml
+          git commit -m "ci: remove one-shot republish workflow (publish succeeded)" || exit 0
+          git push
