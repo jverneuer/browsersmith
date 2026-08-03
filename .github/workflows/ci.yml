@@ -28,24 +28,26 @@ jobs:
 
       # Publish + tag/release only when the package version changed vs. the
       # previous commit on main — a source/docs/CI-only push never publishes.
-      - name: Detect version change
+      - name: Detect version or name change
         id: version
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          CURRENT=$(node -p "require('./package.json').version")
+          CUR_VER=$(node -p "require('./package.json').version")
+          CUR_NAME=$(node -p "require('./package.json').name")
           PARENT=$(git rev-parse --short HEAD^ 2>/dev/null || echo "")
           if [ -z "$PARENT" ]; then
             CHANGED="true"
           else
-            PREVIOUS=$(git show "$PARENT:package.json" 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || echo "")
-            if [ "$CURRENT" != "$PREVIOUS" ]; then
+            PREV_VER=$(git show "$PARENT:package.json" 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || echo "")
+            PREV_NAME=$(git show "$PARENT:package.json" 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).name" 2>/dev/null || echo "")
+            if [ "$CUR_VER" != "$PREV_VER" ] || [ "$CUR_NAME" != "$PREV_NAME" ]; then
               CHANGED="true"
             else
               CHANGED="false"
             fi
           fi
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
-          echo "Version $CURRENT (previous: ${PREVIOUS:-<none>}) — changed: $CHANGED"
+          echo "$CUR_NAME@$CUR_VER (previous: ${PREV_NAME:-<none>}@${PREV_VER:-<none>}) — changed: $CHANGED"
 
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'

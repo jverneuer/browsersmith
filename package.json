@@ -1,8 +1,8 @@
 {
-  "name": "browsercore",
+  "name": "browsersmith",
   "version": "0.0.1",
   "private": false,
-  "description": "Customer-facing entrypoint for the browsercore networking and impersonation stack — browser-identical TLS + HTTP fingerprints behind a single fetch().",
+  "description": "Browsersmith — browser-identical TLS + HTTP fingerprints behind a single fetch(), composing the browsercore networking stack.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
