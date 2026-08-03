@@ -1,7 +1,7 @@
 {
   "name": "browsercore",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.0.1",
+  "private": false,
   "description": "Customer-facing entrypoint for the browsercore networking and impersonation stack — browser-identical TLS + HTTP fingerprints behind a single fetch().",
   "license": "MIT",
   "type": "module",
@@ -16,6 +16,16 @@
   "engines": {
     "node": ">=26.0.0"
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jverneuer/browsercore.git"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -23,7 +33,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "example": "tsx",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {
     "@browsercore/compression": "^0.1.2",
