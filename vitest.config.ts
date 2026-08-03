@@ -7,5 +7,11 @@ export default defineConfig({
         testTimeout: 15_000,
         hookTimeout: 15_000,
         globals: false,
+        coverage: {
+            provider: "v8",
+            include: ["src/**/*.ts"],
+            all: true,
+            reporter: ["text", "json-summary"],
+        },
     },
 });
