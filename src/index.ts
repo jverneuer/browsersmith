@@ -55,6 +55,62 @@ export type {
 export { createCookieJar, saveJar, loadJar } from "@browsercore/cookies";
 export type { CookieJar, CookieUrl, Cookie } from "@browsercore/cookies";
 
+// HTTP/3 over QUIC — QUIC transport + HTTP/3 framing + QPACK. Composes the
+// same fetch() seam as HTTP/1.1 and HTTP/2; not yet wired into the default
+// ALPN dispatch in @browsercore/fetch (opt-in via createHttp3Connection).
+export { connectHttp3, Http3ConnectionImpl } from "@browsercore/http3";
+export type {
+    Http3Connection,
+    Http3Options,
+    Http3Request,
+    Http3Response,
+} from "@browsercore/http3";
+export {
+    FrameParseError as Http3FrameParseError,
+    GoawayReceivedError,
+    Http3Error,
+    PushCancelledError,
+    QpackDecodeError,
+    SettingsAckTimeoutError,
+    SettingsViolationError,
+} from "@browsercore/http3";
+export type {
+    HeaderField as Http3HeaderField,
+    HeaderBlock as Http3HeaderBlock,
+    Http3SettingsMap,
+    Http3StreamTypeValue,
+    Http3FrameTypeValue,
+} from "@browsercore/http3";
+
+// QUIC transport — RFC 9000 packet headers, frames, packet protection,
+// streams, and connection lifecycle over a datagram (UDP) transport. The
+// transport layer HTTP/3 runs on.
+export { connectQuic, QuicConnectionImpl } from "@browsercore/quic";
+export type {
+    QuicConnection,
+    QuicOptions,
+    QuicStream,
+    QuicTransportParameters,
+    DatagramTransport,
+    DatagramCloseReason,
+    ConnectionId,
+    StreamId,
+    StreamState,
+    StreamCloseReason,
+    UdpAddress,
+} from "@browsercore/quic";
+export {
+    ConnectionClosedError,
+    FlowControlError,
+    FrameParseError as QuicFrameParseError,
+    HandshakeTimeoutError,
+    PacketParseError,
+    QuicError,
+    ResetStreamError,
+    StopSendingError,
+    TransportParameterError,
+} from "@browsercore/quic";
+
 // Convenience: the recommended starter profile ids.
 export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";

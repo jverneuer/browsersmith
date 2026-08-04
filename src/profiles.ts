@@ -4,6 +4,12 @@
  * The full registry (`listProfiles()`) contains more; this file names the
  * handful that are documented, battle-tested against bot detectors, and used
  * by the examples. Pin a profile id so crawls stay reproducible.
+ *
+ * These ids cover the TLS + HTTP/1.1 + HTTP/2 fingerprint. HTTP/3 (QUIC) rides
+ * the same profile — the QUIC transport + HTTP/3 SETTINGS are derived from the
+ * same chrome-140 / firefox-128 profile, so no separate HTTP/3 profile ids are
+ * needed. See the `@browsercore/http3` and `@browsercore/quic` re-exports in
+ * this entrypoint for the HTTP/3 surface.
  */
 
 import type { ProfileId } from "@browsercore/profiles";
