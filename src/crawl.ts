@@ -15,6 +15,7 @@ import { connectQuic, type ConnectionId, type DatagramTransport, type UdpAddress
 import { CHROME_140 } from "./profiles.js";
 import { defaultTransportFactory, defaultCryptoProvider } from "./wiring.js";
 import { devLogger, silentLogger, type Logger } from "./wiring.js";
+import { devLogger, silentLogger, systemClock, type Clock, type Logger } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -65,6 +66,14 @@ export interface CrawlOptions {
      */
     readonly debug?: boolean;
 
+    /**
+     * Clock source for time-driven logic on the experimental HTTP/3 (QUIC) path
+     * — connection-id generation and handshake timeouts. Defaults to the system
+     * clock ({@link systemClock}); inject a deterministic clock for reproducible
+     * ids in tests. The default TCP + TLS path and the QUIC transport layer
+     * have no clock seam and are unaffected.
+     */
+    readonly clock?: Clock;
 }
 
 /** A single crawl result. `ok` carries the response; `error` the failure. */
@@ -76,7 +85,7 @@ export interface CrawlResult {
     readonly response?: FetchResponse;
     /**
      * Present when the fetch succeeded over the experimental HTTP/3 (QUIC)
-     * path — see {@link CrawlOptions.http3}. `Http3Response` carries raw
+     * path — see {@link CrawlOptions.http3}. `Http3Response} carries raw
      * status + headers + body (it is *not* a {@link FetchResponse}); treat the
      * two response fields as mutually exclusive.
      */
@@ -134,6 +143,7 @@ async function fetchHttp3(
     fetchOptions?: FetchOptions,
     timeoutMs?: number,
     logger?: Logger,
+    clock?: Clock,
 ): Promise<CrawlResult> {
     let parsed: URL;
     try {
@@ -169,6 +179,7 @@ async function fetchHttp3(
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
         crypto: defaultCryptoProvider,
+        clock: clock ?? systemClock,
     });
 
     // exactOptionalPropertyTypes rejects `{ logger: undefined }` for an optional
@@ -282,6 +293,7 @@ export async function crawl(
                     merged,
                     timeoutMs,
                     options?.debug ? devLogger : silentLogger,
+                    options?.clock,
                 );
             } else {
                 try {

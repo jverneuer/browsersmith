@@ -45,3 +45,20 @@ export const devLogger: Logger = {
     warn: (message, ...meta) => console.warn(message, ...meta),
     error: (message, ...meta) => console.error(message, ...meta),
 };
+
+// ---------------------------------------------------------------------------
+// Clock abstraction (injected — makes time-dependent logic testable)
+// ---------------------------------------------------------------------------
+
+/**
+ * A source of the current time. Injected so connection id generation and any
+ * future time-driven logic can be tested deterministically. {@link systemClock}
+ * is the production default; tests supply a fake.
+ */
+export interface Clock {
+    /** Current time in milliseconds since the Unix epoch (same unit as Date.now()). */
+    now(): number;
+}
+
+/** Production clock backed by the global Date. */
+export const systemClock: Clock = { now: () => Date.now() };

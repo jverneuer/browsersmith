@@ -115,3 +115,4 @@ export {
 export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
 export { defaultTransportFactory, defaultCryptoProvider } from "./wiring.js";
+export { systemClock, type Clock } from "./wiring.js";
