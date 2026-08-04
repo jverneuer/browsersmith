@@ -14,6 +14,7 @@ import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { CHROME_140 } from "./profiles.js";
 import { defaultTransportFactory, defaultCryptoProvider } from "./wiring.js";
+import { devLogger, silentLogger, type Logger } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -54,6 +55,16 @@ export interface CrawlOptions {
      * Defaults to `undefined` — HTTP/1.1|HTTP/2 over TCP + TLS.
      */
     readonly http3?: (host: string, port: number) => Promise<DatagramTransport> | DatagramTransport;
+    /**
+     * Enable development logging for the underlying protocol connections that
+     * accept a {@link Logger}. When `true`, the experimental HTTP/3 (QUIC) path
+     * forwards frames / lifecycle events to the console via
+     * {@link devLogger}; the default TCP + TLS path and the QUIC transport
+     * layer have no logger seam and are unaffected. Defaults to `false`
+     * (silent).
+     */
+    readonly debug?: boolean;
+
 }
 
 /** A single crawl result. `ok` carries the response; `error` the failure. */
@@ -122,6 +133,7 @@ async function fetchHttp3(
     factory: (host: string, port: number) => Promise<DatagramTransport> | DatagramTransport,
     fetchOptions?: FetchOptions,
     timeoutMs?: number,
+    logger?: Logger,
 ): Promise<CrawlResult> {
     let parsed: URL;
     try {
@@ -159,7 +171,13 @@ async function fetchHttp3(
         crypto: defaultCryptoProvider,
     });
 
-    const http3 = await connectHttp3({ quic, settingsAckTimeoutMs: handshakeTimeoutMs });
+    // exactOptionalPropertyTypes rejects `{ logger: undefined }` for an optional
+    // `logger?` field, so spread the logger in only when one was provided.
+    const http3 = await connectHttp3({
+        quic,
+        settingsAckTimeoutMs: handshakeTimeoutMs,
+        ...(logger === undefined ? {} : { logger }),
+    });
 
     try {
         const headers = new Map<string, string>();
@@ -231,6 +249,9 @@ export async function crawl(
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;
     }
+    if (options?.debug === true) {
+        clientOptions.debug = options.debug;
+    }
     const client = createClient(clientOptions);
 
     const results: CrawlResult[] = Array.from({ length: urls.length });
@@ -255,7 +276,13 @@ export async function crawl(
                     ...(timeoutMs === undefined ? {} : { timeoutMs }),
                 };
                 // oxlint-disable-next-line no-await-in-loop — sequential fetch within each worker is intentional for per-host politeness
-                results[index] = await fetchHttp3(url, http3Factory, merged, timeoutMs);
+                results[index] = await fetchHttp3(
+                    url,
+                    http3Factory,
+                    merged,
+                    timeoutMs,
+                    options?.debug ? devLogger : silentLogger,
+                );
             } else {
                 try {
                     const merged: FetchOptions = {
