@@ -1,0 +1,185 @@
+# browsercore — LLM Usage Guide
+
+browsercore (npm: `browsersmith`) is a TypeScript HTTP client that impersonates real browsers at the wire level. It produces byte-identical TLS ClientHello, HTTP/2 SETTINGS, and HTTP/1.1 header ordering to Chrome or Firefox. It does NOT execute JavaScript, render DOM, or run a browser engine — it is a `fetch()` replacement for bot-detection evasion and browser-accurate HTTP.
+
+## When to use this library
+
+- Crawling/scraping server-rendered websites that fingerprint via JA3/JA4/HTTP2 signals
+- Defeating bot-detection that keys on TLS or HTTP/2 fingerprint (not JS challenges)
+- Authenticated API testing with browser-accurate requests
+- High-throughput crawling where spawning a full browser is too expensive
+- Cookie/session persistence across many requests
+- CI smoke tests against bot-protected endpoints
+
+## When NOT to use this library
+
+- SPAs that require JavaScript execution to render content
+- Sites using Cloudflare Turnstile / JS challenges / CAPTCHAs
+- Tasks needing screenshots, user interaction, or visual inspection
+- Sites behind login walls requiring browser-based auth flows
+- WebSocket or HTTP/3 connections (HTTP/3 not yet implemented)
+- WebGL/Canvas/Font fingerprinting (browsercore does not touch these)
+
+## Quick start
+
+```ts
+import { fetch, PROFILES } from "browsersmith";
+
+// One-shot request with Chrome 140 fingerprint
+const res = await fetch("https://example.com", {
+  profile: PROFILES.CHROME_140,
+});
+const html = await res.text();
+
+// Reusable client with cookie persistence
+import { createClient, createCookieJar, loadJar } from "browsersmith";
+
+const cookies = await loadJar("./cookies.json");
+const client = createClient({ profile: PROFILES.FIREFOX_128, cookies });
+
+const page1 = await client.fetch("https://shop.example.com/cart");
+const page2 = await client.fetch("https://shop.example.com/checkout"); // sends cookies
+
+await client.close();
+await cookies.saveJar("./cookies.json");
+```
+
+## Core API
+
+### fetch() — one-shot request
+```ts
+fetch(url: string, options?: FetchOptions): Promise<FetchResponse>
+```
+Options: `profile`, `headers`, `method`, `body`, `timeout`, `followRedirects`, `maxRedirects`, `signal` (AbortSignal).
+
+### createClient() — persistent connection pool
+```ts
+createClient(options?: ClientOptions): Client
+```
+Returns a `Client` with `.fetch()`, `.close()`. Reuses connections, applies cookies, handles cookies automatically.
+
+### crawl() — multi-URL batch fetcher
+```ts
+crawl(urls: string[], options?: CrawlOptions): AsyncGenerator<CrawlResult>
+```
+Options: `concurrency`, `delayMs`, `profile`, `cookies`, `onError`.
+
+### PROFILES — built-in browser fingerprints
+```ts
+PROFILES.CHROME_140   // Chrome 140, Windows
+PROFILES.CHROME_128   // Chrome 128
+PROFILES.CHROME_120   // Chrome 120
+PROFILES.FIREFOX_128  // Firefox 128
+PROFILES.FIREFOX_120  // Firefox 120
+PROFILES.FIREFOX_135  // Firefox 135
+PROFILES.SAFARI_17    // Safari 17
+PROFILES.EDGE_128     // Edge 128
+```
+
+Each profile produces the full fingerprint triple: TLS ClientHello + HTTP/2 SETTINGS + HTTP/1.1 header order.
+
+### Cookie jar
+```ts
+createCookieJar()            // new empty jar
+loadJar(path)                // load from JSON file
+jar.saveJar(path)            // persist to JSON
+jar.getCookiesFor(url)       // matching cookies
+jar.setCookie(raw, fromUrl)  // set from Set-Cookie header
+```
+RFC 6265-compliant: domain matching, path matching, SameSite enforcement, secure/httpOnly flags, expiration, CHIPS.
+
+## Errors
+
+All errors extend `FetchError` with a `kind` discriminator:
+
+| Error | kind | When |
+|---|---|---|
+| `FetchTimeoutError` | `"timeout"` | Request exceeds timeout |
+| `RedirectError` | `"redirect"` | Too many redirects or redirect loop |
+| `ProtocolError` | `"protocol"` | HTTP protocol violation |
+| `ConnectionError` | `"connection"` | TCP/TLS connection failed |
+| `TLSError` | `"tls"` | TLS handshake failed |
+
+```ts
+try {
+  await fetch("https://example.com", { profile: PROFILES.CHROME_140 });
+} catch (err) {
+  if (err instanceof FetchTimeoutError) {
+    // err.timeoutMs, err.url
+  } else if (err instanceof RedirectError) {
+    // err.url, err.redirectCount
+  }
+  // All errors have: err.kind, err.message, err.cause, err.url
+}
+```
+
+## Patterns for LLM-assisted building
+
+### Crawling a site
+```ts
+import { crawl, PROFILES, createCookieJar } from "browsersmith";
+
+const cookies = createCookieJar();
+for await (const result of crawl(urls, {
+  profile: PROFILES.CHROME_140,
+  cookies,
+  concurrency: 5,
+  delayMs: 200,
+})) {
+  if (result.ok) {
+    console.log(result.url, result.status);
+    const text = await result.text();
+  } else {
+    console.error(result.url, result.error.kind);
+  }
+}
+```
+
+### Defeating bot detection
+```ts
+// Rotate profiles to vary fingerprint
+const profiles = [PROFILES.CHROME_140, PROFILES.FIREFOX_128, PROFILES.SAFARI_17];
+const profile = profiles[Math.floor(Math.random() * profiles.length)];
+
+const res = await fetch(targetUrl, {
+  profile,
+  headers: {
+    "Accept-Language": "en-US,en;q=0.9",
+    // browsercore handles the rest of the header order automatically
+  },
+});
+```
+
+### Authenticated crawling
+```ts
+// Step 1: Get cookies via browser automation (Playwright)
+// Step 2: Use browsercore for high-volume fetching
+const cookies = await loadJar("./auth-cookies.json");
+const client = createClient({ profile: PROFILES.CHROME_140, cookies });
+
+// All requests now carry authentication cookies with browser-accurate fingerprints
+for (const productUrl of productUrls) {
+  const res = await client.fetch(productUrl);
+  // process...
+}
+```
+
+## Package architecture
+
+browsercore composes independently published `@browsercore/*` packages:
+- `@browsercore/fetch` — the fetch() API
+- `@browsercore/profiles` — fingerprint definitions (pure data)
+- `@browsercore/cookies` — cookie jar
+- `@browsercore/tls` — TLS 1.3 (JA3/JA4 source)
+- `@browsercore/http2` — HTTP/2 client
+- `@browsercore/http1` — HTTP/1.1 client
+- `@browsercore/compression` — gzip/deflate/brotli/zstd
+- `@browsercore/crypto` — AEAD, HKDF, X25519, hashing
+
+All packages follow the provider abstraction pattern and are independently versioned.
+
+## Environment requirements
+
+- Node.js >= 26
+- ESM only (`"type": "module"`)
+- TypeScript >= 7 recommended
