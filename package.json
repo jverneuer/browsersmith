@@ -43,7 +43,7 @@
         "@browsercore/fetch": "0.2.0",
         "@browsercore/http1": "0.2.0",
         "@browsercore/http2": "0.2.0",
-        "@browsercore/http3": "0.1.9",
+        "@browsercore/http3": "0.1.4",
         "@browsercore/profiles": "0.2.0",
         "@browsercore/quic": "0.2.1",
         "@browsercore/tls": "0.2.0",
