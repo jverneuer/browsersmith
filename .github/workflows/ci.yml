@@ -25,7 +25,13 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm run lint -- --deny-warnings
-      - run: npm test
+
+      # Coverage gate (MINIMUM=94). Runs the full suite under v8 coverage and
+      # enforces the 94% statement/branch/function/line thresholds defined in
+      # vitest.config.ts — exits non-zero if any metric falls short, failing CI.
+      - name: Enforce 94% coverage (MINIMUM=94)
+        run: npm test -- --coverage
+
       - run: npm run build
 
       # Publish + tag/release only when the package version changed vs. the
