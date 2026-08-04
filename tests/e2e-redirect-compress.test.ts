@@ -67,25 +67,17 @@ describe("e2e: content-encoding decompression", () => {
         expect(body).toContain("landed");
     });
 
-    // NOTE: end-to-end gzip/deflate through the published @browsercore/fetch
-    // 0.1.3 is blocked by a double-decompression issue (http1 decompresses,
-    // then fetch decompresses again). The fix lives on the hardened main
-    // branch (src/response.ts buildResponse takes an explicit `encoding` so
-    // the dispatch layer can pass `undefined` for http1). Until that ships to
-    // the registry, we verify the codec directly and the wire framing via the
-    // identity path above.
-    it("the @browsercore/compression codec decodes real gzip + deflate bytes", async () => {
-        const { compression } = await import("@browsercore/compression");
-        const { gzipSync, deflateSync } = await import("node:zlib");
-        const gz = compression.decompress(
-            new Uint8Array(gzipSync(Buffer.from("gzip-payload"))),
-            "gzip",
-        );
-        expect(new TextDecoder().decode(gz)).toBe("gzip-payload");
-        const def = compression.decompress(
-            new Uint8Array(deflateSync(Buffer.from("deflate-payload"))),
-            "deflate",
-        );
-        expect(new TextDecoder().decode(def)).toBe("deflate-payload");
+    it("decompresses a gzip body end-to-end through the fetch client", async () => {
+        const res = await fetchBehavior(bh, "/gzip");
+        expect(res.status).toBe(200);
+        expect(res.headers["content-encoding"]).toBe("gzip");
+        expect(await res.text()).toBe("gzip-decoded-body");
+    });
+
+    it("decompresses a deflate body end-to-end through the fetch client", async () => {
+        const res = await fetchBehavior(bh, "/deflate");
+        expect(res.status).toBe(200);
+        expect(res.headers["content-encoding"]).toBe("deflate");
+        expect(await res.text()).toBe("deflate-decoded-body");
     });
 });
