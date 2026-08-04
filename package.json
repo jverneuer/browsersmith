@@ -17,7 +17,8 @@
         "node": ">=26.0.0"
     },
     "files": [
-        "dist"
+        "dist",
+        "bin"
     ],
     "publishConfig": {
         "access": "public"
@@ -34,7 +35,9 @@
         "test:watch": "vitest",
         "example": "tsx",
         "clean": "rm -rf dist",
-        "prepublishOnly": "npm run clean && npm run build"
+        "prepublishOnly": "npm run clean && npm run build",
+        "docs": "typedoc",
+        "coverage-md": "./bin/coverage-md.mjs"
     },
     "dependencies": {
         "@browsercore/compression": "0.2.0",
