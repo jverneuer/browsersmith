@@ -125,6 +125,15 @@ protocol code lives in standalone, separately versioned packages:
 re-exports the developer-facing surface. No filesystem links, no workspaces —
 `npm install` pulls the real published packages.
 
+## Build config
+
+Build, lint, test, and CI config flows from the shared
+[`@browsercore/dev`](https://www.npmjs.com/package/@browsercore/dev) package, so
+`tsconfig` / `vitest` / `oxlint` / coverage all inherit one source of truth.
+That config layer is independent of the source in `src/`, the runtime
+`@browsercore/*` dependencies, the public API, and the npm publish flow — those
+are untouched. This package is published to npm as **`browsersmith`**.
+
 ## License
 
 MIT

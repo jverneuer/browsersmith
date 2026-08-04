@@ -10,6 +10,7 @@
 import { createClient, type FetchResponse, type FetchOptions } from "@browsercore/fetch";
 import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
+import type { Transport } from "@browsercore/transport";
 import { CHROME_140 } from "./profiles.js";
 
 /** Options for {@link crawl}. */
@@ -26,6 +27,11 @@ export interface CrawlOptions {
     readonly concurrency?: number;
     /** Request timeout in ms per URL. Default 30_000. */
     readonly timeoutMs?: number;
+    /**
+     * Transport factory override. Lets tests point {@link crawl} at a loopback
+     * server instead of the real network. Defaults to undefined (real TCP).
+     */
+    readonly transportFactory?: (host: string, port: number) => Promise<Transport> | Transport;
 }
 
 /** A single crawl result. `ok` carries the response; `error` the failure. */
@@ -76,7 +82,13 @@ export async function crawl(
     const delayMs = options?.delayMs ?? 0;
     const concurrency = options?.concurrency ?? DEFAULT_CONCURRENCY;
     const timeoutMs = options?.timeoutMs;
-    const client = createClient({ profile, cookieJar: jar });
+    // `exactOptionalPropertyTypes` forbids passing `transportFactory: undefined`
+    // for an optional parameter, so spread it in only when the caller set it.
+    const client = createClient({
+        profile,
+        cookieJar: jar,
+        ...(options?.transportFactory === undefined ? {} : { transportFactory: options.transportFactory }),
+    });
 
     const results: CrawlResult[] = Array.from({ length: urls.length });
     // Process in batches of `concurrency` per host. Simple and polite.
