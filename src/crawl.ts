@@ -94,6 +94,7 @@ export async function crawl(
                     ...options?.fetchOptions,
                     ...(timeoutMs === undefined ? {} : { timeoutMs }),
                 };
+                // oxlint-disable-next-line no-await-in-loop — sequential fetch within each worker is intentional for per-host politeness
                 const response = await client.fetch(url, merged);
                 results[index] = {
                     url,
@@ -108,6 +109,7 @@ export async function crawl(
                     error: err instanceof Error ? err.message : String(err),
                 };
             }
+            // oxlint-disable-next-line no-await-in-loop — sequential delay between batches is intentional for politeness
             await sleep(delayMs);
         }
     }
