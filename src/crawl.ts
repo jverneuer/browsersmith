@@ -28,8 +28,11 @@ export interface CrawlOptions {
     /** Request timeout in ms per URL. Default 30_000. */
     readonly timeoutMs?: number;
     /**
-     * Transport factory override. Lets tests point {@link crawl} at a loopback
-     * server instead of the real network. Defaults to undefined (real TCP).
+     * Test seam: override how the transport for an origin is established.
+     * Mirrors `FetchClientOptions.transportFactory`. Lets behavioral tests
+     * drive `crawl()` against an in-process fixture server (via the loopback
+     * transport) instead of a real network. Production callers omit it.
+     * Defaults to undefined (real TCP).
      */
     readonly transportFactory?: (host: string, port: number) => Promise<Transport> | Transport;
 }
@@ -82,8 +85,8 @@ export async function crawl(
     const delayMs = options?.delayMs ?? 0;
     const concurrency = options?.concurrency ?? DEFAULT_CONCURRENCY;
     const timeoutMs = options?.timeoutMs;
-    // `exactOptionalPropertyTypes` forbids passing `transportFactory: undefined`
-    // for an optional parameter, so spread it in only when the caller set it.
+    // Under `exactOptionalPropertyTypes`, an optional `?:` property cannot be
+    // assigned `undefined`, so only attach the seam when the caller set it.
     const client = createClient({
         profile,
         cookieJar: jar,
@@ -97,6 +100,8 @@ export async function crawl(
         while (cursor < urls.length) {
             const index = cursor;
             cursor += 1;
+            // noUncheckedIndexedAccess makes `urls[index]` `string | undefined`,
+            // so guard the (rare) out-of-bounds / sparse-hole case before use.
             const url = urls[index];
             if (url === undefined) {
                 continue;
