@@ -13,6 +13,7 @@ import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { CHROME_140 } from "./profiles.js";
+import { defaultTransportFactory, defaultCryptoProvider } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -155,6 +156,7 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
+        crypto: defaultCryptoProvider,
     });
 
     const http3 = await connectHttp3({ quic, settingsAckTimeoutMs: handshakeTimeoutMs });

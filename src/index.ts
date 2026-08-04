@@ -114,3 +114,4 @@ export {
 // Convenience: the recommended starter profile ids.
 export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
+export { defaultTransportFactory, defaultCryptoProvider } from "./wiring.js";
