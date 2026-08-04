@@ -106,6 +106,81 @@ for (const r of results) {
 
 Use `crawl()` for batch fetching — sitemaps, product catalogs, or any list of URLs where you need cookie persistence and polite concurrency.
 
+## HTTP/3 (QUIC)
+
+The full **HTTP/3 + QUIC** stack is composed into this entrypoint. The
+`@browsercore/quic` (RFC 9000 transport: packet headers, frames, streams) and
+`@browsercore/http3` (HTTP/3 framing + QPACK over QUIC streams) packages are
+re-exported from `browsercore`:
+
+```ts
+import {
+    connectQuic, connectHttp3,
+    type DatagramTransport, type UdpAddress,
+} from "browsercore";
+
+// 1. Open a UDP transport bound to the target origin (node:dgram adapter).
+const transport = await bindUdp(host, port); // your DatagramTransport
+
+// 2. Establish the QUIC connection.
+const quic = await connectQuic({
+    transport,
+    peer: { address: host, port, family: 6 },
+    serverName: host,
+    initialDcid: randomId(8),
+    initialScid: randomId(8),
+});
+
+// 3. Speak HTTP/3 over it.
+const h3 = await connectHttp3({ quic });
+const res = await h3.request({
+    method: "GET", scheme: "https", authority: host, path: "/",
+    headers: new Map([["user-agent", "…"]]),
+});
+console.log(res.statusCode, new TextDecoder().decode(res.body));
+await h3.close();
+```
+
+### HTTP/3 crawling
+
+The `crawl()` helper has an opt-in `http3` transport factory. When set, every
+URL is fetched over a fresh HTTP/3 connection instead of the default
+TCP + TLS + HTTP/1.1|HTTP/2 path:
+
+```ts
+import { crawl } from "browsercore";
+
+const results = await crawl(["https://example.com/"], {
+    http3: async (host, port) => await bindUdp(host, port),
+});
+for (const r of results) {
+    // r.http3Response (Http3Response) is set instead of r.response on this path.
+    console.log(r.status, r.http3Response && new TextDecoder().decode(r.http3Response.body));
+}
+```
+
+> **Status:** HTTP/3 / QUIC are still experimental in this entrypoint. The
+> QUIC layer moves *unprotected* frames (the TLS 1.3 handshake and packet
+> protection are out of scope for the core library — a production build layers
+> those on top), the HTTP/3 path establishes one connection per URL with no
+> pooling or cookie-jar coordination yet, and HTTP/3 is not part of the default
+> ALPN protocol dispatch in `createClient`. Pin a profile and opt in via the
+> `http3` factory.
+
+The re-exported HTTP/3 / QUIC API surface:
+
+| Export | Source | What |
+| --- | --- | --- |
+| `connectQuic`, `QuicConnectionImpl` | `@browsercore/quic` | QUIC connection lifecycle |
+| `connectHttp3`, `Http3ConnectionImpl` | `@browsercore/http3` | HTTP/3 over a QUIC connection |
+| `QuicConnection`, `Http3Connection` | both | Connection contracts |
+| `DatagramTransport`, `UdpAddress` | `@browsercore/quic` | UDP transport abstraction |
+| `Http3Request`, `Http3Response`, `Http3Options` | `@browsercore/http3` | HTTP/3 request/response |
+| `Http3FrameType`, `Http3Settings`, `Http3StreamType` | `@browsercore/http3` | HTTP/3 frame/settings constants |
+| `qpackEncodeHeaders` / `qpackDecodeHeaders`, `QpackEncoder`, `QpackDecoder` | `@browsercore/http3` | QPACK (RFC 9204) |
+| `QuicFrameType`, `LongPacketType`, `TransportParameter` | `@browsercore/quic` | QUIC frame/parameter constants |
+| QUIC / HTTP/3 errors | both | Typed errors (`QuicError`, `Http3Error`, …) |
+
 ### Errors: What goes wrong and how to handle it
 
 Every failure mode is a typed error. Match on the error type to handle it — no string parsing.
@@ -280,6 +355,7 @@ interface CrawlOptions {
   concurrency?: number;          // max in-flight per host, default 1
   timeoutMs?: number;
   transportFactory?: (host: string, port: number) => Promise<Transport> | Transport;
+  http3?: (host: string, port: number) => Promise<DatagramTransport> | DatagramTransport;
 }
 ```
 
