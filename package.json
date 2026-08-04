@@ -50,7 +50,7 @@
         "@browsercore/transport": "^0.2.0"
     },
     "devDependencies": {
-        "@browsercore/dev": "^0.1.2",
+        "@browsercore/dev": "latest",
         "@types/node": "^26.1.2",
         "@vitest/coverage-v8": "^4.1.10",
         "oxlint": "^1.76.0",
