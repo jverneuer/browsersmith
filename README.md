@@ -1,4 +1,5 @@
 # browsercore
+[![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jverneuer/browsersmith/main/.github/coverage-badge.json)](https://github.com/jverneuer/browsersmith/blob/main/COVERAGE.md)
 
 You wrote a scraper. It worked yesterday. Today you're getting 403 Forbidden.
 
