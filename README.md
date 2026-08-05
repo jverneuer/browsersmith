@@ -8,6 +8,14 @@ The site isn't blocking your IP. It's looking at how your request looks at the p
 
 It does not run a browser. It does not execute JavaScript. It solves one problem: making HTTP requests that pass bot-detection systems.
 
+> **⚠️ Early Stage Warning**
+>
+> BrowserCore is in active development. Many protocol implementations are incomplete or experimental — TLS handshakes, HTTP/2, and HTTP/3 are works in progress and may not work against real servers yet.
+>
+> **QUIC:** There is no plan to ship a custom QUIC transport implementation. One or more third-party QUIC implementations will be integrated behind the `DatagramTransport` abstraction.
+>
+> **Node.js dependency:** The current stack depends on Node.js built-in modules (`node:net`, `node:crypto`, `node:dns`, `node:zlib`) for low-level I/O. However, abstraction layers (`Transport`, `CryptoProvider`, `CompressionProvider`, `RandomSource`) are built in, so alternative runtime backends (Bun, Deno, Cloudflare Workers, WASM) can be plugged in without rewriting protocol code.
+
 ## Quickstart
 
 **Prerequisites:** Node >= 26.
