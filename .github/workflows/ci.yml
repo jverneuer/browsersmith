@@ -26,10 +26,10 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm run lint -- --deny-warnings
+      - run: npm test -- --coverage
       - name: Enforce >=94% line coverage
         run: |
           node -e "const MINIMUM=94;const fs=require('fs');let t;try{t=JSON.parse(fs.readFileSync('./coverage/coverage-summary.json','utf8')).total}catch(e){console.error('coverage-summary.json unreadable:',e.message);process.exit(1)}const p=t.lines.pct;if(p<MINIMUM){console.error('FAIL: line coverage '+p+'% < '+MINIMUM+'% minimum');process.exit(1)}console.log('OK: line coverage '+p+'% >= '+MINIMUM+'% minimum')"
-      - run: npm test -- --coverage
       - name: Generate COVERAGE.md
         run: npx coverage-md
       - run: npm run build
