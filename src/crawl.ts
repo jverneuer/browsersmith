@@ -11,7 +11,7 @@ import { createClient, type FetchResponse, type FetchOptions, type FetchClientOp
 import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
-import { connectQuic, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
+import { connectQuic, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { CHROME_140 } from "./profiles.js";
 
 /** Options for {@link crawl}. */
@@ -93,12 +93,12 @@ function sleep(ms: number): Promise<void> {
 const QUIC_CONNECTION_ID_LEN = 8;
 
 /** Generate a random QUIC connection id of `length` bytes. */
-function randomConnectionId(length: number): Uint8Array {
+function randomConnectionId(length: number): ConnectionId {
     const id = new Uint8Array(length);
     // globalThis.crypto is available in Node >= 16 and matches the Web Crypto
     // API; no dependency on node:crypto keeps this helper portable.
     globalThis.crypto.getRandomValues(id);
-    return id;
+    return id as ConnectionId;
 }
 
 /** Resolve the UDP address family for a host string (naive IPv6 detection). */
