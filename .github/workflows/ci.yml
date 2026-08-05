@@ -26,7 +26,6 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm run lint -- --deny-warnings
-      - name: Enforce >=94% line coverage
       - run: npm test -- --coverage
       - name: Enforce >=94% line coverage
         run: |
