@@ -28,7 +28,7 @@
         "url": "https://github.com/jverneuer/browsersmith.git"
     },
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
+        "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "lint": "oxlint --type-aware src/",
         "test": "vitest run",
@@ -36,8 +36,7 @@
         "example": "tsx",
         "clean": "rm -rf dist",
         "prepublishOnly": "npm run clean && npm run build",
-        "docs": "typedoc",
-        "coverage-md": "./bin/coverage-md.mjs"
+        "docs": "typedoc"
     },
     "dependencies": {
         "@browsercore/compression": "0.2.0",
@@ -53,7 +52,6 @@
         "@browsercore/transport": "0.2.3"
     },
     "devDependencies": {
-        "@browsercore/dev": "latest",
         "@types/node": "^26.1.2",
         "@vitest/coverage-v8": "^4.1.10",
         "oxlint": "^1.76.0",

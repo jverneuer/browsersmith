@@ -1,18 +1,25 @@
-import { definePackageConfig } from "@browsercore/dev/vitest";
+import { defineConfig } from "vitest/config";
 
-// Adopts the shared @browsercore/dev vitest config (reporters, src coverage,
-// timeouts) and layers on the hard 94% coverage gate. The thresholds are the
-// whole point of this PR; the shared config's `coverage` extension point is
-// how consumers opt into extra coverage settings without forking the config.
-export default definePackageConfig({
-    name: "browsersmith",
-    coverage: {
-        thresholds: { statements: 94, branches: 94, functions: 94, lines: 94 },
-        exclude: [
-            "**/index.ts",
-            "**/wiring.ts",
-            "tests/**",
-            "node_modules/**",
-        ],
+export default defineConfig({
+    test: {
+        name: "browsersmith",
+        root: ".",
+        include: ["tests/**/*.test.ts"],
+        environment: "node",
+        globals: false,
+        testTimeout: 30_000,
+        hookTimeout: 30_000,
+        coverage: {
+            provider: "v8",
+            include: ["src/**/*.ts"],
+            reporter: ["text", "html", "json-summary"],
+            thresholds: { statements: 94, branches: 94, functions: 94, lines: 94 },
+            exclude: [
+                "**/index.ts",
+                "**/wiring.ts",
+                "tests/**",
+                "node_modules/**",
+            ],
+        },
     },
 });
