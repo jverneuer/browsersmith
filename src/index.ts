@@ -115,6 +115,12 @@ export {
 export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
 
+// Platform adapters — Node.js implementations of the Net/DnsResolver contracts.
+// These are the only files in the stack that import node:net / node:dns.
+// Consumers on other runtimes (Bun, Deno, ...) provide their own adapters.
+export { nodeNet, nodeDns } from "./net/index.js";
+export type { Net, Socket, DnsResolver, ConnectOptions, IPAddress } from "@browsercore/contracts";
+
 // Platform default wiring — the single seam for injectable dependencies.
 // Export the default implementations so callers can use them or override
 // with custom implementations in tests.
