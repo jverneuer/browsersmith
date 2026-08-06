@@ -1,5 +1,7 @@
 # browsercore
 
+[![coverage](https://img.shields.io/endpoint?url=https://jverneuer.github.io/browsersmith/badge.json)](https://github.com/jverneuer/browsersmith/blob/main/COVERAGE.md)
+
 A TypeScript networking stack that impersonates real browsers at the wire level. Composes independently published `@browsercore/*` packages into a single `fetch()` whose TLS ClientHello (JA3/JA4), HTTP/2 SETTINGS, and header ordering match Chrome or Firefox byte-for-byte, defeating bot-detection services.
 
 ## Architecture
