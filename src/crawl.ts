@@ -160,18 +160,12 @@ async function fetchHttp3(
 
     // Wire the platform dependencies: Logger and Clock.
     // Use devLogger when debug is enabled, silentLogger otherwise.
-    // Convert the http3-style logger to quic-compatible logger (function properties).
+    // Convert http3-style logger (methods) to quic-style logger (function properties).
     const http3Logger = debug === true ? devLogger : defaultLogger;
-    const logger = {
-        debug: (...args: unknown[]) => {
-            http3Logger.debug(...args as [string, ...unknown[]]);
-        },
-        warn: (...args: unknown[]) => {
-            http3Logger.warn(...args as [string, ...unknown[]]);
-        },
-        error: (...args: unknown[]) => {
-            http3Logger.error(...args as [string, ...unknown[]]);
-        },
+    const logger: { debug: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void } = {
+        debug: (...args) => http3Logger.debug(...args as [string, ...unknown[]]),
+        warn: (...args) => http3Logger.warn(...args as [string, ...unknown[]]),
+        error: (...args) => http3Logger.error(...args as [string, ...unknown[]]),
     };
 
     const quic = await connectQuic({

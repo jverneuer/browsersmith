@@ -310,4 +310,20 @@ describe("crawl() — HTTP/3 path", () => {
         // The connectQuic call should have been made
         expect(mockedConnectQuic).toHaveBeenCalledTimes(1);
     });
+
+    it("uses devLogger when debug is true", async () => {
+        const h3 = fakeHttp3(200);
+        const mockQuic = { id: "fake-quic", handshake: vi.fn(async () => {}) };
+        mockedConnectQuic.mockResolvedValue(mockQuic);
+        mockedConnectHttp3.mockResolvedValue(h3);
+
+        const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
+        await crawl(["https://example.com/"], { http3: factory, debug: true });
+
+        // The connectQuic call should have been made with a logger
+        expect(mockedConnectQuic).toHaveBeenCalledTimes(1);
+        const quicOpts = mockedConnectQuic.mock.calls[0]![0] as { logger?: { debug: unknown } };
+        expect(quicOpts.logger).toBeDefined();
+        expect(quicOpts.logger!.debug).toBeDefined();
+    });
 });
