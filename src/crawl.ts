@@ -14,7 +14,7 @@ import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { crypto } from "@browsercore/crypto";
 import { CHROME_140 } from "./profiles.js";
-import { defaultLogger, defaultClock, devLogger } from "./wiring.js";
+import { defaultClock } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -55,14 +55,6 @@ export interface CrawlOptions {
      * Defaults to `undefined` — HTTP/1.1|HTTP/2 over TCP + TLS.
      */
     readonly http3?: (host: string, port: number) => Promise<DatagramTransport> | DatagramTransport;
-    /**
-     * Enable debug logging for the HTTP/3 (QUIC) path. When true, uses
-     * devLogger which forwards diagnostics to the console. When false or
-     * omitted, uses silentLogger (no output).
-     *
-     * Defaults to `false`.
-     */
-    readonly debug?: boolean;
 }
 
 /** A single crawl result. `ok` carries the response; `error` the failure. */
@@ -126,7 +118,6 @@ async function fetchHttp3(
     factory: (host: string, port: number) => Promise<DatagramTransport> | DatagramTransport,
     fetchOptions?: FetchOptions,
     timeoutMs?: number,
-    debug?: boolean,
 ): Promise<CrawlResult> {
     let parsed: URL;
     try {
@@ -154,22 +145,6 @@ async function fetchHttp3(
     const peer: UdpAddress = { address: host, port, family: familyForHost(host) };
     const handshakeTimeoutMs = timeoutMs ?? 10_000;
 
-    // Wire the platform dependencies: Logger and Clock.
-    // Use devLogger when debug is enabled, silentLogger otherwise.
-    // Convert http3-style logger (methods) to quic-style logger (function properties).
-    const http3Logger = debug === true ? devLogger : defaultLogger;
-    const logger: { debug: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void } = {
-        debug: (...args): void => {
-            http3Logger.debug(...args as [string, ...unknown[]]);
-        },
-        warn: (...args): void => {
-            http3Logger.warn(...args as [string, ...unknown[]]);
-        },
-        error: (...args): void => {
-            http3Logger.error(...args as [string, ...unknown[]]);
-        },
-    };
-
     const quic = await connectQuic({
         transport,
         peer,
@@ -177,7 +152,6 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
-        logger,
         clock: defaultClock,
     });
 
@@ -265,8 +239,6 @@ export async function crawl(
     // Positive guard computed once, outside the loop: a non-negated name keeps
     // the no-negated-condition rule happy and avoids re-testing per-URL.
     const usingHttp3 = http3Factory !== undefined;
-    // Debug logging flag for the HTTP/3 path
-    const debug = options?.debug ?? false;
     async function worker(): Promise<void> {
         while (cursor < urls.length) {
             const index = cursor;
@@ -282,7 +254,7 @@ export async function crawl(
                     ...(timeoutMs === undefined ? {} : { timeoutMs }),
                 };
                 // oxlint-disable-next-line no-await-in-loop — sequential fetch within each worker is intentional for per-host politeness
-                results[index] = await fetchHttp3(url, http3Factory, merged, timeoutMs, debug);
+                results[index] = await fetchHttp3(url, http3Factory, merged, timeoutMs);
             } else {
                 try {
                     const merged: FetchOptions = {

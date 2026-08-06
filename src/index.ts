@@ -120,7 +120,5 @@ export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
 // with custom implementations in tests.
 export {
     defaultCryptoProvider,
-    defaultLogger,
     defaultClock,
-    devLogger,
 } from "./wiring.js";
