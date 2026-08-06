@@ -1,8 +1,4 @@
-import { connect } from "@browsercore/transport";
 import { crypto } from "@browsercore/crypto";
-
-export const defaultTransportFactory = (host: string, port: number) =>
-    connect({ host, port });
 
 export const defaultCryptoProvider = crypto;
 
@@ -41,9 +37,12 @@ export const silentLogger: Logger = {
  * noise.
  */
 export const devLogger: Logger = {
-    debug: (message, ...meta) => console.debug(message, ...meta),
-    warn: (message, ...meta) => console.warn(message, ...meta),
-    error: (message, ...meta) => console.error(message, ...meta),
+    // oxlint-disable-next-line no-console, no-confusing-void-expression -- devLogger IS the sanctioned console fallback
+    debug: (message, ...meta) => { console.debug(message, ...meta); },
+    // oxlint-disable-next-line no-console, no-confusing-void-expression -- devLogger IS the sanctioned console fallback
+    warn: (message, ...meta) => { console.warn(message, ...meta); },
+    // oxlint-disable-next-line no-console, no-confusing-void-expression -- devLogger IS the sanctioned console fallback
+    error: (message, ...meta) => { console.error(message, ...meta); },
 };
 
 // ---------------------------------------------------------------------------

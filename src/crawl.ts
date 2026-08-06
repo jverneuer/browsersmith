@@ -13,8 +13,6 @@ import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { CHROME_140 } from "./profiles.js";
-import { defaultTransportFactory, defaultCryptoProvider } from "./wiring.js";
-import { devLogger, silentLogger, type Logger } from "./wiring.js";
 import { devLogger, silentLogger, systemClock, type Clock, type Logger } from "./wiring.js";
 
 /** Options for {@link crawl}. */
@@ -178,7 +176,6 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
-        crypto: defaultCryptoProvider,
         clock: clock ?? systemClock,
     });
 
@@ -292,7 +289,7 @@ export async function crawl(
                     http3Factory,
                     merged,
                     timeoutMs,
-                    options?.debug ? devLogger : silentLogger,
+                    options?.debug === true ? devLogger : silentLogger,
                     options?.clock,
                 );
             } else {
