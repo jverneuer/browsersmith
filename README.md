@@ -1,6 +1,6 @@
 # browsercore
 
-[![coverage](https://img.shields.io/endpoint?url=https://jverneuer.github.io/browsersmith/badge.json)](https://github.com/jverneuer/browsersmith/blob/main/COVERAGE.md)
+[![coverage](https://img.shields.io/endpoint?url=https://jverneuer.github.io/browsercore/badge.json)](https://github.com/jverneuer/browsercore/blob/main/COVERAGE.md)
 
 A TypeScript networking stack that impersonates real browsers at the wire level. Composes independently published `@browsercore/*` packages into a single `fetch()` whose TLS ClientHello (JA3/JA4), HTTP/2 SETTINGS, and header ordering match Chrome or Firefox byte-for-byte, defeating bot-detection services.
 
@@ -9,17 +9,27 @@ A TypeScript networking stack that impersonates real browsers at the wire level.
 The monorepo follows a strict layered architecture. Dependencies flow downward — a package may only import from packages below it in the graph.
 
 ```
-@browsercore/contracts (shared interfaces, models, options)
+@browsercore/contracts (shared interfaces, models, IANA codes, options)
         ▲
         │
- ┌──────┼─────────────┐
- │      │             │
- ▼      ▼             ▼
-tls    http2       transport
- │       │             │
- └───────┴─────────────┘
-         ▼
-  @browsercore/browsersmith (entrypoint)
+ ┌──────┼─────────────┬──────────┐
+ │      │             │          │
+ ▼      ▼             ▼          ▼
+tls    http2       transport   profiles
+ │       │             │          │
+ └───────┴──────┬──────┘          │
+                │                 │
+                ▼                 │
+         @browsercore/quic ◄──────┘
+                │
+                ▼
+        @browsercore/http3
+                │
+                ▼
+      @browsercore/fetch
+                │
+                ▼
+    @browsercore/browsersmith (entrypoint)
 ```
 
 ## Package Dependency Graph
@@ -27,29 +37,30 @@ tls    http2       transport
 ### Leaf packages (no internal dependencies)
 | Package | External deps | Purpose |
 |---------|---------------|---------|
+| **contracts** | _(none)_ | Shared interfaces, models, IANA codes, options |
 | **crypto** | @noble/curves | AEAD, HKDF, X25519, hashing |
 | **transport** | _(none)_ | TCP + DNS byte stream |
 | **compression** | _(none)_ | gzip/deflate/brotli/zstd |
 | **cookies** | _(none)_ | RFC 6265 cookie jar |
-| **profiles** | _(none)_ | Browser fingerprint definitions (pure data) |
 
 ### Layer 1 (protocol primitives)
 | Package | Depends on | Purpose |
 |---------|------------|---------|
-| **tls** | transport | TLS 1.3 (with 1.2 fallback), JA3/JA4 source |
-| **http1** | transport | HTTP/1.1 client |
-| **http2** | transport | HTTP/2 framing, HPACK, stream multiplexing |
+| **profiles** | tls, contracts | Browser fingerprint definitions (re-exports IANA codes from tls) |
+| **tls** | transport, contracts | TLS 1.3 (with 1.2 fallback), JA3/JA4 source, IANA codes |
+| **http1** | transport, contracts | HTTP/1.1 client |
+| **http2** | transport, contracts | HTTP/2 framing, HPACK, stream multiplexing |
 
 ### Layer 2 (composed protocols)
 | Package | Depends on | Purpose |
 |---------|------------|---------|
-| **quic** | crypto, tls | QUIC transport (RFC 9000) |
-| **fetch** | compression, cookies, crypto, http1, http2, profiles, tls, transport | Composes layers into fetch() API |
+| **quic** | crypto, tls, contracts | QUIC transport (RFC 9000) |
+| **fetch** | compression, cookies, crypto, http1, http2, profiles, tls, contracts | Composes layers into fetch() API |
 
 ### Layer 3 (HTTP/3)
 | Package | Depends on | Purpose |
 |---------|------------|---------|
-| **http3** | quic, transport | HTTP/3 framing + QPACK over QUIC streams |
+| **http3** | quic, transport, contracts | HTTP/3 framing + QPACK over QUIC streams |
 
 ### Entrypoint
 | Package | Depends on | Purpose |
@@ -59,11 +70,11 @@ tls    http2       transport
 ### Tooling
 | Package | Depends on | Purpose |
 |---------|------------|---------|
-| **devtools** | cookies, crypto, fetch, http1, http2, profiles, tls, transport | Packet inspector, visualizers, CLI |
+| **devtools** | cookies, crypto, fetch, http1, http2, profiles, tls, contracts | Packet inspector, visualizers, CLI |
 
 ## The Contracts Package
 
-**@browsercore/contracts** (`browsercore-api` repo) is the public SDK surface — every type that defines how BrowserCore components communicate.
+**@browsercore/contracts** is the public SDK surface — every type that defines how BrowserCore components communicate. It contains shared interfaces, data models, IANA TLS parameter codes, and protocol options.
 
 ### Litmus Test
 
@@ -84,12 +95,13 @@ tls    http2       transport
 | `BrowserProfile` | contracts | Shared across all protocol packages |
 | `Transport` | contracts | tls, http1, http2 all consume it |
 | `FetchClient` | contracts | browsersmith consumes it |
+| `CIPHER_SUITE_CODES` | contracts | IANA table used by profiles and tls |
 | `ClientHello` | **tls** | Only TLS implementation touches it |
 | `TlsRecord` | **tls** | Only TLS implementation touches it |
 | `SettingsFrame` | **http2** | Only HTTP/2 implementation touches it |
 | `QuicPacket` | **quic** | Only QUIC implementation touches it |
 
-### Three Categories
+### Four Categories
 
 #### 1. Contracts (interfaces that define the API)
 Types that multiple packages implement or consume:
@@ -104,7 +116,15 @@ Plain data with no behavior:
 - `Request`, `Response`, `FetchResponse`, `Headers`
 - `Cookie`, identifiers, state types
 
-#### 3. Options (configuration)
+#### 3. IANA Codes (canonical TLS parameter registries)
+Wire code tables shared by profiles and tls:
+- `CIPHER_GREASE_PLACEHOLDER` — GREASE sentinel (RFC 8701)
+- `CIPHER_SUITE_CODES` — cipher suite name → 2-byte IANA code
+- `NAMED_GROUP_CODES` — supported group name → 2-byte IANA code
+- `SIGNATURE_SCHEME_CODES` — signature algorithm → 2-byte IANA code
+- `VERSION_CODES` — protocol version string → 2-byte IANA code
+
+#### 4. Options (configuration)
 Configuration passed to protocol packages:
 - `TlsOptions`, `Http1Options`, `Http2Options`, `Http3Options`, `QuicOptions`, `FetchClientOptions`
 
@@ -161,10 +181,11 @@ When set, protocol packages emit frames for every packet sent/received. When und
 ## Data Flow
 
 ```
-BrowserProfile (profiles/ — strings + arrays)
+BrowserProfile (contracts/ — strings + arrays)
   → profileToTlsConfig() (fetch/profile.ts)
     → ClientHelloConfig (tls/)
       → cipherSuiteToWire() (tls/handshake/client-hello.ts)
+        → uses CIPHER_SUITE_CODES (contracts/)
 ```
 
 ## ALPN-Driven Protocol Dispatch
@@ -185,7 +206,7 @@ HTTP/3 is opt-in via the `crawl()` helper's `http3` factory — not yet part of 
 2. **Provider abstraction** — Protocol logic never imports Node built-ins directly
 3. **Dependency injection** — Clock, Logger, and packet callbacks are injected for testability
 4. **Zero-cost defaults** — Optional callbacks (Logger, onPacket) have negligible overhead when unset
-5. **Contract-first** — Shared types live in `@browsercore/contracts`, protocol packages implement them
+5. **Contract-first** — Shared types and IANA codes live in `@browsercore/contracts`, protocol packages implement them
 
 ## Commands
 
