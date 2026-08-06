@@ -48,7 +48,7 @@
         "@browsercore/http2": "0.2.1",
         "@browsercore/http3": "0.1.4",
         "@browsercore/profiles": "0.2.0",
-        "@browsercore/quic": "0.2.1",
+        "@browsercore/quic": "0.2.2",
         "@browsercore/tls": "0.3.1",
         "@browsercore/transport": "0.2.3"
     },
