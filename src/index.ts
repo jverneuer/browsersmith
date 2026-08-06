@@ -114,3 +114,13 @@ export {
 // Convenience: the recommended starter profile ids.
 export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
+
+// Platform default wiring — the single seam for injectable dependencies.
+// Export the default implementations so callers can use them or override
+// with custom implementations in tests.
+export {
+    defaultCryptoProvider,
+    defaultLogger,
+    defaultClock,
+    devLogger,
+} from "./wiring.js";
