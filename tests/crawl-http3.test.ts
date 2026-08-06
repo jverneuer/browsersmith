@@ -22,9 +22,15 @@ import { crawl } from "../src/crawl.js";
 
 // Mock the @browsercore/quic module: `connectQuic` returns a stub QUIC
 // connection whose only job is to be passed through to `connectHttp3`.
-vi.mock("@browsercore/quic", () => ({
-    connectQuic: vi.fn(),
-}));
+// Use importOriginal so the real `makeConnectionId` (used by crawl.ts to mint
+// branded ConnectionIds) stays available to the code under test.
+vi.mock(import("@browsercore/quic"), async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        connectQuic: vi.fn(),
+    };
+});
 
 // Mock the @browsercore/http3 module: `connectHttp3` returns a stub HTTP/3
 // connection that records the request and returns a canned response.
