@@ -9,7 +9,7 @@
  * The defaults are:
  * - `defaultCryptoProvider`: The Node-backed CryptoProvider from @browsercore/crypto
  * - `defaultLogger`: silentLogger (no output unless caller opts in)
- * - `defaultClock`: systemClock (Date.now() + setTimeout)
+ * - `defaultClock`: systemClock (Date.now())
  *
  * Callers can override these in tests by passing mock implementations to the
  * connection options.
