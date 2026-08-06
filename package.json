@@ -61,5 +61,8 @@
         "tsx": "^4.19.0",
         "typescript": "^7.0.0",
         "vitest": "^4.1.10"
+    },
+    "overrides": {
+        "@browsercore/tls": "0.4.0"
     }
 }
