@@ -163,9 +163,15 @@ async function fetchHttp3(
     // Convert http3-style logger (methods) to quic-style logger (function properties).
     const http3Logger = debug === true ? devLogger : defaultLogger;
     const logger: { debug: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void } = {
-        debug: (...args) => http3Logger.debug(...args as [string, ...unknown[]]),
-        warn: (...args) => http3Logger.warn(...args as [string, ...unknown[]]),
-        error: (...args) => http3Logger.error(...args as [string, ...unknown[]]),
+        debug: (...args): void => {
+            http3Logger.debug(...args as [string, ...unknown[]]);
+        },
+        warn: (...args): void => {
+            http3Logger.warn(...args as [string, ...unknown[]]);
+        },
+        error: (...args): void => {
+            http3Logger.error(...args as [string, ...unknown[]]);
+        },
     };
 
     const quic = await connectQuic({
