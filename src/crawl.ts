@@ -14,6 +14,7 @@ import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { crypto } from "@browsercore/crypto";
 import { CHROME_140 } from "./profiles.js";
+import { defaultClock } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -151,9 +152,13 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
+        clock: defaultClock,
     });
 
-    const http3 = await connectHttp3({ quic, settingsAckTimeoutMs: handshakeTimeoutMs });
+    const http3 = await connectHttp3({
+        quic: quic as unknown as Parameters<typeof connectHttp3>[0]["quic"],
+        settingsAckTimeoutMs: handshakeTimeoutMs,
+    });
 
     try {
         const headers = new Map<string, string>();

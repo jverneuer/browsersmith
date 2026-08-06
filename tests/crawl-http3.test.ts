@@ -292,4 +292,5 @@ describe("crawl() — HTTP/3 path", () => {
         expect(r.error).toBe("42");
         expect(h3.close).toHaveBeenCalledTimes(1);
     });
+
 });

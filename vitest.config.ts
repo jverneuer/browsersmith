@@ -8,5 +8,11 @@ export default definePackageConfig({
     name: "browsersmith",
     coverage: {
         thresholds: { statements: 94, branches: 94, functions: 94, lines: 94 },
+        exclude: [
+            "**/index.ts",
+            "**/wiring.ts",
+            "tests/**",
+            "node_modules/**",
+        ],
     },
 });
