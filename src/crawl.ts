@@ -13,7 +13,7 @@ import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
 import { CHROME_140 } from "./profiles.js";
-import { defaultCryptoProvider, defaultLogger, defaultClock, devLogger } from "./wiring.js";
+import { defaultLogger, defaultClock, devLogger } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -158,9 +158,15 @@ async function fetchHttp3(
     const peer: UdpAddress = { address: host, port, family: familyForHost(host) };
     const handshakeTimeoutMs = timeoutMs ?? 10_000;
 
-    // Wire the platform dependencies: CryptoProvider, Logger, and Clock.
+    // Wire the platform dependencies: Logger and Clock.
     // Use devLogger when debug is enabled, silentLogger otherwise.
-    const logger = debug ? devLogger : defaultLogger;
+    // Convert the http3-style logger to quic-compatible logger (function properties).
+    const http3Logger = debug ? devLogger : defaultLogger;
+    const logger = {
+        debug: (...args: unknown[]) => http3Logger.debug(...args as [string, ...unknown[]]),
+        warn: (...args: unknown[]) => http3Logger.warn(...args as [string, ...unknown[]]),
+        error: (...args: unknown[]) => http3Logger.error(...args as [string, ...unknown[]]),
+    };
 
     const quic = await connectQuic({
         transport,
@@ -169,12 +175,14 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
-        crypto: defaultCryptoProvider,
         logger,
         clock: defaultClock,
     });
 
-    const http3 = await connectHttp3({ quic, settingsAckTimeoutMs: handshakeTimeoutMs });
+    const http3 = await connectHttp3({
+        quic: quic as unknown as Parameters<typeof connectHttp3>[0]["quic"],
+        settingsAckTimeoutMs: handshakeTimeoutMs,
+    });
 
     try {
         const headers = new Map<string, string>();
