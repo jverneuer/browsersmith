@@ -293,4 +293,40 @@ describe("crawl() — HTTP/3 path", () => {
         expect(h3.close).toHaveBeenCalledTimes(1);
     });
 
+    it("encodes a string body via TextEncoder (HTTP/3 path)", async () => {
+        // The `typeof body === "string"` branch: a string body must be encoded
+        // to UTF-8 bytes before being passed to the HTTP/3 layer.
+        const h3 = fakeHttp3(200);
+        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectHttp3.mockResolvedValue(h3);
+
+        const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
+        const encoder = new TextEncoder();
+        await crawl(["https://example.com/submit"], {
+            http3: factory,
+            fetchOptions: { method: "POST", body: "plain string body" },
+        });
+
+        const req = h3.request.mock.calls[0]![0]!;
+        // The string body should be encoded to UTF-8 bytes.
+        expect(req.body).toEqual(encoder.encode("plain string body"));
+    });
+
+    it("detects IPv6 host and sets family: 6 on the UDP address", async () => {
+        // familyForHost() returns 6 when the host contains ":" (IPv6). An IPv6
+        // URL like https://[::1]/ exercises this branch.
+        const h3 = fakeHttp3(200);
+        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectHttp3.mockResolvedValue(h3);
+
+        const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
+        await crawl(["https://[::1]/"], { http3: factory });
+
+        // The factory should receive the bracketed IPv6 host.
+        expect(factory).toHaveBeenCalledWith("[::1]", 443);
+        // The connectQuic call should carry family: 6 for IPv6.
+        const quicOpts = mockedConnectQuic.mock.calls[0]![0]!;
+        expect(quicOpts.peer.family).toBe(6);
+    });
+
 });

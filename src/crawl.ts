@@ -15,6 +15,7 @@ import { connectQuic, makeConnectionId, type ConnectionId, type DatagramTranspor
 import { crypto } from "@browsercore/crypto";
 import { CHROME_140 } from "./profiles.js";
 import { defaultClock } from "./wiring.js";
+import { nodeNet, nodeDns } from "./net/index.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -226,6 +227,8 @@ export async function crawl(
     const clientOptions: { -readonly [K in keyof FetchClientOptions]: FetchClientOptions[K] } = {
         profile,
         cookieJar: jar,
+        net: nodeNet,
+        dns: nodeDns,
     };
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;
