@@ -43,7 +43,7 @@
         "@browsercore/contracts": "^0.1.4",
         "@browsercore/cookies": "0.2.0",
         "@browsercore/crypto": "0.2.1",
-        "@browsercore/fetch": "^0.2.4",
+        "@browsercore/fetch": "^0.2.3",
         "@browsercore/http1": "0.2.0",
         "@browsercore/http2": "0.2.1",
         "@browsercore/http3": "0.1.5",
