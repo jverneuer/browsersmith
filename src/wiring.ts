@@ -12,7 +12,7 @@
  */
 
 import { createPlatform, type Platform, type PlatformOptions } from "./platform/index.js";
-import type { Clock, CryptoProvider } from "@browsercore/contracts";
+import type { CryptoProvider } from "@browsercore/contracts";
 
 // Re-export createPlatform so consumers can build custom platforms (e.g. tests).
 export { createPlatform };
@@ -39,9 +39,13 @@ export { nodeTime } from "./platform/time/node/index.js";
 // Legacy aliases — these match the old export names so existing consumers
 // (crawl.ts, tests) keep working during the migration.
 // Explicit type annotations are required under verbatimModuleSyntax: an
-// inferred re-export would reference the implementation-resolved Clock/
-// CryptoProvider, which is not portable across module boundaries.
+// inferred re-export would reference the implementation-resolved types,
+// which are not portable across module boundaries. The clock annotation is
+// derived from Platform["time"]["clock"] (the monotonic Platform clock)
+// rather than a bare `Clock` import — contracts historically exposes two
+// Clock shapes (options-level with setTimeout vs. Platform time with
+// monotonic), and a bare import resolves to the wrong one here.
 /** @deprecated Use `platform.crypto.provider` instead. */
 export const defaultCryptoProvider: CryptoProvider = platform.crypto.provider;
 /** @deprecated Use `platform.time.clock` instead. */
-export const defaultClock: Clock = platform.time.clock;
+export const defaultClock: Platform["time"]["clock"] = platform.time.clock;
