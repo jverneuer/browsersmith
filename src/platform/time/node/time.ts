@@ -36,8 +36,4 @@ export const nodeTime: Time = {
     },
 };
 
-/**
- * Default Node.js time instance (alias for `nodeTime`).
- * @deprecated Use `nodeTime` directly.
- */
-export const NodeTime = nodeTime;
+

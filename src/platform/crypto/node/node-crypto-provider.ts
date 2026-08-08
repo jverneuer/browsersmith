@@ -2,8 +2,9 @@
  * {@link CryptoProvider} backed by Node's native `node:crypto` module.
  *
  * Higher layers call the provider methods here, never `node:crypto` directly, so the
- * backend stays replaceable. Exported as the default singleton so consumers can call
- * `crypto.hkdf(...)` without threading a provider through every constructor.
+ * backend stays replaceable. This is the Node.js adapter for the platform crypto
+ * contract — consumers receive it through the Platform, never by importing this
+ * class directly.
  */
 
 import {
@@ -33,7 +34,7 @@ import type {
 import { UnsupportedAlgorithmError } from "@browsercore/crypto";
 import { assertNever } from "@browsercore/crypto";
 import { aeadEncrypt, aeadDecrypt } from "./aead.js";
-import { defaultX25519Backend } from "@browsercore/crypto";
+import { NobleX25519Backend } from "@browsercore/crypto";
 import type { CryptoProvider } from "@browsercore/contracts";
 import type { X25519Backend } from "@browsercore/crypto";
 
@@ -54,7 +55,7 @@ function hashAlgorithmName(hash: HashId): string {
 }
 
 export class NodeCryptoProvider implements CryptoProvider {
-    constructor(private readonly x25519: X25519Backend = defaultX25519Backend) {}
+    constructor(private readonly x25519: X25519Backend = new NobleX25519Backend()) {}
 
     public randomBytes(length: number): Uint8Array {
         return nodeRandomBytes(length);
