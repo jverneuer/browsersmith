@@ -268,5 +268,5 @@ function ecdhCurveToNode(curve: EcdhCurve): string {
     }
 }
 
-/** Default singleton — the crypto backend higher layers call into. */
+/** Default Node.js crypto adapter — composed into the Platform in platform/index.ts. */
 export const nodeCryptoProvider: CryptoProvider = new NodeCryptoProvider();

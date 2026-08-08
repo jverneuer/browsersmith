@@ -100,15 +100,11 @@ function decodeWith(
 /**
  * `node:zlib`-backed implementation of {@link CompressionProvider}.
  *
- * The production HTTP layers call the default singleton (`compression`) — they
- * never construct this class directly. Tests inject a fake provider through
- * the `CompressionProvider` interface.
- *
- * @example
- * ```ts
- * import { compression } from "@browsercore/compression";
- * const decompressed = compression.decompress(responseBytes, "br");
- * ```
+ * This is the Node.js adapter for the platform compression contract. It is
+ * composed into the Platform in `platform/index.ts` and threaded down to the
+ * HTTP layers through dependency injection — callers never construct this
+ * class directly. Tests inject a fake provider through the
+ * `CompressionProvider` interface.
  *
  * @since 0.1.0
  */
@@ -187,16 +183,12 @@ export class NodeZlibCompressionProvider implements CompressionProvider {
 }
 
 /**
- * Default compression backend HTTP layers call into.
+ * Default compression adapter — composed into the Platform in
+ * `platform/index.ts` and threaded to the HTTP layers via dependency
+ * injection.
  *
  * Backed by `node:zlib`. Replaceable for tests or alternative runtimes by
  * constructing a different {@link CompressionProvider} implementation.
- *
- * @example
- * ```ts
- * import { compression } from "@browsercore/compression";
- * const compressed = compression.gzip(new TextEncoder().encode("hello"));
- * ```
  *
  * @since 0.1.0
  */
