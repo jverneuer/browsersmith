@@ -118,7 +118,7 @@ export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
 // Platform composition root — the single seam for all runtime dependencies.
 // browsersmith is the ONLY package allowed node:* imports. The Platform is
 // built once in wiring.ts and threaded down through options objects.
-export { platform, createPlatform, defaultCryptoProvider, defaultClock } from "./wiring.js";
+export { platform, createPlatform } from "./wiring.js";
 export type { Platform, PlatformOptions } from "./platform/index.js";
 
 // Platform adapters — Node.js implementations of the platform contracts.

@@ -28,14 +28,11 @@
 import { nodeNet, nodeDns, nodeUdp } from "./network/node/index.js";
 import { nodeCryptoProvider } from "./crypto/node/index.js";
 import { nodeCompression } from "./compression/node/index.js";
-import { nodeEventProvider } from "./events/node/index.js";
-import { noOpTelemetry } from "./telemetry/noop/index.js";
-import { nodeTime } from "./time/node/index.js";
+import { nodeEventProvider, type EventProvider } from "./events/node/index.js";
+import { noOpTelemetry, type Telemetry } from "./telemetry/noop/index.js";
+import { nodeTime, type Time } from "./time/node/index.js";
 import type { Net, DnsResolver, DatagramTransport, CryptoProvider } from "@browsercore/contracts";
 import type { CompressionProvider } from "@browsercore/compression";
-import type { EventProvider } from "./events/node/event-provider-types.js";
-import type { Telemetry } from "./telemetry/noop/telemetry-types.js";
-import type { Time } from "./time/node/time-types.js";
 
 /**
  * The Platform object — the complete set of runtime dependencies.

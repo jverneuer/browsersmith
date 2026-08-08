@@ -50,7 +50,9 @@ export const nodeUdp: DatagramTransport = {
     },
     close() {
         return new Promise<void>((resolve) => {
-            nodeUdpSocket.close(() => resolve());
+            nodeUdpSocket.close(() => {
+                resolve();
+            });
         });
     },
 };

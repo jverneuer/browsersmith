@@ -7,8 +7,7 @@
  * compression implementation.
  */
 
-import { compression } from "@browsercore/compression";
-import type { CompressionProvider } from "@browsercore/compression";
+import { compression, type CompressionProvider } from "@browsercore/compression";
 
 /**
  * Node.js implementation of the {@link CompressionProvider} contract.

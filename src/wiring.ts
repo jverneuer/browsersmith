@@ -16,7 +16,6 @@ import { createPlatform, type Platform, type PlatformOptions } from "./platform/
 // Re-export createPlatform so consumers can build custom platforms (e.g. tests).
 export { createPlatform };
 export type { PlatformOptions };
-import { setConnectorDeps } from "@browsercore/transport";
 
 /**
  * The default platform instance — built once at startup.
@@ -26,11 +25,6 @@ import { setConnectorDeps } from "@browsercore/transport";
  * construct a Platform with mock adapters.
  */
 export const platform: Platform = createPlatform();
-
-// Wire the platform's network adapters into the transport package's connector
-// system. This is needed for the directConnector and createHttpProxy paths
-// that don't receive net/dns through options.
-setConnectorDeps({ net: platform.network.tcp, dns: platform.network.dns });
 
 // Re-export commonly-used platform members for backward compatibility.
 // New code should import from "./platform/index.js" directly.
