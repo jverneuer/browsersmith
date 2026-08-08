@@ -6,7 +6,7 @@ Packaging and running browsersmith on serverless runtimes — Lambda, Cloudflare
 
 browsersmith is pure TypeScript, ESM-only, and has zero runtime dependencies outside the `@browsercore/*` namespace. The full stack — TLS 1.3, HTTP/2, HPACK, AES-GCM, X25519 — is JavaScript that calls Node's global WebCrypto. No native modules to compile, no BoringSSL build to ship, no Go subprocess to spawn, no `LD_PRELOAD` tricks. Cold start is just module load plus WebCrypto initialization that the Node 26 runtime has already done for you.
 
-That profile matters on Lambda. The two main alternatives both fail the serverless test: curl-impersonate ships a native binary linked against BoringSSL and there is no published Lambda Layer for it — you end up building your own container image. CycleTLS spawns a Go subprocess listening on a localhost port, which adds ~50-100ms of cold-start overhead and breaks under Lambda's freeze/thaw cycle because the IPC channel doesn't survive. See [comparison.md](../comparison.md) for the full matrix. browsersmith just bundles.
+That profile matters on Lambda. The two main alternatives both fail the serverless test: curl-impersonate ships a native binary linked against BoringSSL and there is no published Lambda Layer for it — you end up building your own container image. CycleTLS spawns a Go subprocess listening on a localhost port, which adds ~50-100ms of cold-start overhead and breaks under Lambda's freeze/thaw cycle because the IPC channel doesn't survive. See [comparison.md](./comparison.md) for the full matrix. browsersmith just bundles.
 
 ## Packaging for Lambda
 
@@ -39,7 +39,7 @@ MyFunction:
 
 On a cold start, the Lambda runtime loads `dist/index.mjs`, the ESM module graph resolves browsersmith and its `@browsercore/*` dependencies, and the first `fetch()` call lazy-loads the TLS and HTTP/2 code paths. WebCrypto's `subtle` is already initialized as part of the Node 26 runtime — there is no BoringSSL init step, no Go runtime spin-up, no Chromium process to launch.
 
-The cold-start overhead attributable to browsersmith is qualitatively fast: module load plus a few milliseconds of WebCrypto warmup. We are not committing to a specific number here — measure on your own account and configuration — but it lands in the tens-of-milliseconds range, not the seconds that a puppeteer-extra Lambda pays to boot Chromium. Warm invocations skip the module load entirely; the per-request cost is just the TLS handshake and the HTTP request. See [examples.md](../examples.md) for recipes that pair browsersmith with the standard fetch-shaped response handling.
+The cold-start overhead attributable to browsersmith is qualitatively fast: module load plus a few milliseconds of WebCrypto warmup. We are not committing to a specific number here — measure on your own account and configuration — but it lands in the tens-of-milliseconds range, not the seconds that a puppeteer-extra Lambda pays to boot Chromium. Warm invocations skip the module load entirely; the per-request cost is just the TLS handshake and the HTTP request. See [examples.md](./examples.md) for recipes that pair browsersmith with the standard fetch-shaped response handling.
 
 ## An example Lambda handler
 
@@ -87,7 +87,7 @@ export async function handler(event: Event) {
 
 HTTP/3 over QUIC runs over UDP. **AWS Lambda does not support UDP egress** — as of late 2026, Lambda only allows TCP outbound connections. So `crawl({ http3: factory })`, `connectQuic()`, and `connectHttp3()` all fail at runtime in Lambda: the UDP socket bind fails on the sandboxed network namespace. Verify against current AWS docs before relying on this, but lean toward "does not work" until AWS ships UDP egress generally.
 
-The default path — `fetch()` and `createClient().fetch()` — is TCP + TLS + HTTP/1.1|HTTP/2 (ALPN-negotiated), and works as-is in Lambda with no code changes. If you genuinely need HTTP/3, run on a runtime that supports UDP egress: EC2, ECS, EKS, or a container on Fargate. See [architecture.md](../architecture.md) for how the HTTP/3 path is structured and why it is a separate code path from default `fetch()`.
+The default path — `fetch()` and `createClient().fetch()` — is TCP + TLS + HTTP/1.1|HTTP/2 (ALPN-negotiated), and works as-is in Lambda with no code changes. If you genuinely need HTTP/3, run on a runtime that supports UDP egress: EC2, ECS, EKS, or a container on Fargate. See [architecture.md](./architecture.md) for how the HTTP/3 path is structured and why it is a separate code path from default `fetch()`.
 
 ## Connection reuse across invocations
 
@@ -125,7 +125,7 @@ export async function handler(event: { url: string }) {
 
 browsersmith is Node-only. It imports `node:net`, `node:crypto`, `node:zlib`, `node:dns`, and `node:fs/promises` transitively through `@browsercore/{transport,crypto,compression,fetch}`. Cloudflare Workers and Vercel Edge run on V8 isolates that do not expose those builtins — WebCrypto is available (which matches `@browsercore/crypto`'s assumption), but `node:zlib` is not, so `@browsercore/compression` will throw on the first gzip, deflate, or brotli response. UDP egress for QUIC is also unsupported on both platforms.
 
-For full browsersmith compatibility, stay on a Node 26 Lambda or a Node container on Fargate. If you need a Workers or Edge deployment, plan to swap the compression layer (and probably the transport) for V8-isolate-compatible implementations — see [packages.md](../packages.md) for the swappable-interface contract.
+For full browsersmith compatibility, stay on a Node 26 Lambda or a Node container on Fargate. If you need a Workers or Edge deployment, plan to swap the compression layer (and probably the transport) for V8-isolate-compatible implementations — see [packages.md](./packages.md) for the swappable-interface contract.
 
 ## Footprint summary
 

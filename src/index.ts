@@ -115,16 +115,25 @@ export {
 export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
 
-// Platform adapters — Node.js implementations of the Net/DnsResolver contracts.
-// These are the only files in the stack that import node:net / node:dns.
-// Consumers on other runtimes (Bun, Deno, ...) provide their own adapters.
-export { nodeNet, nodeDns } from "./net/index.js";
-export type { Net, Socket, DnsResolver, ConnectOptions, IPAddress } from "@browsercore/contracts";
+// Platform composition root — the single seam for all runtime dependencies.
+// browsersmith is the ONLY package allowed node:* imports. The Platform is
+// built once in wiring.ts and threaded down through options objects.
+export { platform, createPlatform, defaultCryptoProvider, defaultClock } from "./wiring.js";
+export type { Platform, PlatformOptions } from "./platform/index.js";
 
-// Platform default wiring — the single seam for injectable dependencies.
-// Export the default implementations so callers can use them or override
-// with custom implementations in tests.
-export {
-    defaultCryptoProvider,
-    defaultClock,
-} from "./wiring.js";
+// Platform adapters — Node.js implementations of the platform contracts.
+// These are the only files in the stack that import node:net / node:dns /
+// node:dgram / node:crypto / node:zlib / node:events. Consumers on other
+// runtimes (Bun, Deno, ...) provide their own adapters via createPlatform().
+export { nodeNet, nodeDns, nodeUdp } from "./platform/network/node/index.js";
+export { nodeCryptoProvider } from "./platform/crypto/node/index.js";
+export { nodeCompression } from "./platform/compression/node/index.js";
+export { nodeEventProvider } from "./platform/events/node/index.js";
+export { noOpTelemetry } from "./platform/telemetry/noop/index.js";
+export { nodeTime } from "./platform/time/node/index.js";
+
+// Re-export contracts so consumers can pull interfaces from one place.
+export type { Net, Socket, DnsResolver, ConnectOptions, IPAddress } from "@browsercore/contracts";
+export type { EventProvider } from "./platform/events/node/index.js";
+export type { Telemetry } from "./platform/telemetry/noop/index.js";
+export type { Time } from "./platform/time/node/index.js";

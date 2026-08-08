@@ -31,7 +31,7 @@ Notes:
 - You need HTTP/3 + QUIC with fingerprints, not just HTTP/2.
 - You want a real fetch-shaped async API with `AsyncIterable` streaming, typed errors, redirects, and timeouts — not a CLI you shell out to.
 - You'd rather pick from a curated profile registry than paste raw JA3 strings from Wireshark.
-- You're documenting the boundary between network-layer and in-page-runtime stealth for a team — see [bot-detection](./use-cases/bot-detection.md).
+- You're documenting the boundary between network-layer and in-page-runtime stealth for a team — see [bot-detection](./bot-detection.md).
 
 ## When to use curl-impersonate
 
@@ -94,7 +94,7 @@ browsersmith covers the network layer (TLS, HTTP/2, HTTP/3); stealth covers the 
 
 browsersmith is a networking-layer tool. It composes cleanly with JS-layer stealth tools, queue/retry frameworks, and HTML parsers — none of which it duplicates.
 
-The canonical combination is **browsersmith (network layer) + `puppeteer-extra-plugin-stealth` (in-page runtime)**: use browsersmith for the bulk of HTML / API fetches, fall back to a stealth-puppeteer headless browser only when an endpoint serves a JS challenge, harvest the session cookie, then return to browsersmith for the heavy lifting. See the [When fingerprints aren't enough](./use-cases/bot-detection.md#when-fingerprints-arent-enough) playbook.
+The canonical combination is **browsersmith (network layer) + `puppeteer-extra-plugin-stealth` (in-page runtime)**: use browsersmith for the bulk of HTML / API fetches, fall back to a stealth-puppeteer headless browser only when an endpoint serves a JS challenge, harvest the session cookie, then return to browsersmith for the heavy lifting. See the [When fingerprints aren't enough](./bot-detection.md#when-fingerprints-arent-enough) playbook.
 
 | Combination | Use when |
 |---|---|

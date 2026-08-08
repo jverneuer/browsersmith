@@ -26,7 +26,7 @@ Generate Random Extensions And Sustain Extensibility (RFC 8701) — reserved "ga
 
 ### JA3
 
-Salesforce's TLS fingerprint (2017): an MD5 of five comma-joined ClientHello fields — version, cipher list, extension list, supported groups, EC point formats. Bot detectors compare the hash against known-browser whitelists; browsersmith's `@browsercore/tls` matches the target browser. See [use-cases/bot-detection.md](./use-cases/bot-detection.md).
+Salesforce's TLS fingerprint (2017): an MD5 of five comma-joined ClientHello fields — version, cipher list, extension list, supported groups, EC point formats. Bot detectors compare the hash against known-browser whitelists; browsersmith's `@browsercore/tls` matches the target browser. See [bot-detection.md](./bot-detection.md).
 
 ### JA4
 
@@ -48,7 +48,7 @@ HTTP/2's header compression format (RFC 7541): a static table of 61 common heade
 
 ### HTTP/2 fingerprint (Akamai format)
 
-A string like `1:65536;2:0;4:131072;5:16384|12517377|0|m,a,s,p` encoding the client's SETTINGS, initial WINDOW_UPDATE, priority frame, and pseudo-header order. Named after Akamai, the first major detector to use it; the second fingerprinting layer after TLS. See [use-cases/bot-detection.md](./use-cases/bot-detection.md).
+A string like `1:65536;2:0;4:131072;5:16384|12517377|0|m,a,s,p` encoding the client's SETTINGS, initial WINDOW_UPDATE, priority frame, and pseudo-header order. Named after Akamai, the first major detector to use it; the second fingerprinting layer after TLS. See [bot-detection.md](./bot-detection.md).
 
 ### Pseudo-headers
 
@@ -70,11 +70,11 @@ HTTP/2 flow-control frame (RFC 9113) advertising bytes a receiver will accept on
 
 ### Datagram
 
-A UDP packet — QUIC's underlying transport unit. browsersmith's `@browsercore/quic` consumes a `DatagramTransport` interface (`read`/`write`/`close` over UDP). AWS Lambda blocks UDP egress, so HTTP/3 is unavailable there. See [use-cases/serverless.md](./use-cases/serverless.md#http3-caveat).
+A UDP packet — QUIC's underlying transport unit. browsersmith's `@browsercore/quic` consumes a `DatagramTransport` interface (`read`/`write`/`close` over UDP). AWS Lambda blocks UDP egress, so HTTP/3 is unavailable there. See [serverless.md](./serverless.md#http3-caveat).
 
 ### HTTP/3
 
-RFC 9114 — HTTP semantics over QUIC instead of TCP. Multiplexed streams with no head-of-line blocking, built-in 0-RTT, and a separate fingerprint surface (transport parameters + QPACK). Experimental in browsersmith. See [architecture.md](./architecture.md#the-http-3-path).
+RFC 9114 — HTTP semantics over QUIC instead of TCP. Multiplexed streams with no head-of-line blocking, built-in 0-RTT, and a separate fingerprint surface (transport parameters + QPACK). Experimental in browsersmith. See [architecture.md](./architecture.md#the-http3-path).
 
 ### QPACK
 
@@ -82,7 +82,7 @@ HTTP/3's header compression format (RFC 9204), the QUIC-friendly successor to HP
 
 ### QUIC
 
-RFC 9000 — a UDP-based transport combining TLS 1.3, stream multiplexing, congestion control, and 0-RTT resumption. The substrate HTTP/3 runs on. browsersmith implements it in pure TypeScript in `@browsercore/quic`. See [architecture.md](./architecture.md#the-http-3-path).
+RFC 9000 — a UDP-based transport combining TLS 1.3, stream multiplexing, congestion control, and 0-RTT resumption. The substrate HTTP/3 runs on. browsersmith implements it in pure TypeScript in `@browsercore/quic`. See [architecture.md](./architecture.md#the-http3-path).
 
 ### Transport parameters
 
@@ -92,7 +92,7 @@ QUIC's per-connection config (RFC 9000): initial max data, max streams, idle tim
 
 ### Bot detection
 
-Server-side systems that fingerprint HTTP, TLS, and behavioral signals to reject non-browser clients. Cloudflare, Akamai, DataDome, and PerimeterX all do it. See [use-cases/bot-detection.md](./use-cases/bot-detection.md).
+Server-side systems that fingerprint HTTP, TLS, and behavioral signals to reject non-browser clients. Cloudflare, Akamai, DataDome, and PerimeterX all do it. See [bot-detection.md](./bot-detection.md).
 
 ### CHIPS
 

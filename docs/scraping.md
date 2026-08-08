@@ -4,7 +4,7 @@ The networking layer of a scraper that doesn't get 403'd. Sessions, concurrency,
 
 ## Why scraping needs fingerprint matching
 
-Most bot-protected targets (Cloudflare, Akamai, DataDome, PerimeterX) fingerprint the TLS `ClientHello` and HTTP/2 `SETTINGS` frame, then 403 anything that doesn't match a known browser — before your code sees a response. Stock `fetch`, `undici`, `got`, and `axios` all fail this check. browsersmith ships wire-identical Chrome 140 / Firefox 128 fingerprints, so the request reaches your handler instead of the bot wall. See [bot-detection.md](./bot-detection.md) for the mechanism, [profiles.md](../profiles.md) for what's in a profile.
+Most bot-protected targets (Cloudflare, Akamai, DataDome, PerimeterX) fingerprint the TLS `ClientHello` and HTTP/2 `SETTINGS` frame, then 403 anything that doesn't match a known browser — before your code sees a response. Stock `fetch`, `undici`, `got`, and `axios` all fail this check. browsersmith ships wire-identical Chrome 140 / Firefox 128 fingerprints, so the request reaches your handler instead of the bot wall. See [bot-detection.md](./bot-detection.md) for the mechanism, [profiles.md](./profiles.md) for what's in a profile.
 
 ## The basic scraping loop
 
@@ -64,7 +64,7 @@ for (const r of results) {
 }
 ```
 
-`crawl()` returns `Promise<CrawlResult[]>` — iterate with `for (const r of await crawl(...))`, not `for await`. Failed fetches become `{ ok: false, error }` and don't abort the rest. Full recipe: [examples.md#walking-a-sitemap-with-crawl](../examples.md#walking-a-sitemap-with-crawl).
+`crawl()` returns `Promise<CrawlResult[]>` — iterate with `for (const r of await crawl(...))`, not `for await`. Failed fetches become `{ ok: false, error }` and don't abort the rest. Full recipe: [examples.md#walking-a-sitemap-with-crawl](./examples.md#walking-a-sitemap-with-crawl).
 
 ## Cookies and sessions
 
@@ -102,7 +102,7 @@ If the target serves a Cloudflare JS challenge, a DataDome captcha, or any clien
 - **Pair browsersmith with a headless browser.** Use `puppeteer-extra` + `puppeteer-extra-plugin-stealth` (or Playwright) for the JS-challenge endpoints, browsersmith for everything else. The two are complementary — stealth patches the JS layer, browsersmith patches the network layer.
 - **Use a captcha-solving service** for the rare request that genuinely needs one.
 
-Be honest about limits: no fingerprint beats every detector. Some targets also do IP reputation, behavioral analysis, or TLS-1.2-only JA3 matching browsersmith doesn't yet cover. See [bot-detection.md](./bot-detection.md) and [comparison.md#when-to-combine](../comparison.md#when-to-combine).
+Be honest about limits: no fingerprint beats every detector. Some targets also do IP reputation, behavioral analysis, or TLS-1.2-only JA3 matching browsersmith doesn't yet cover. See [bot-detection.md](./bot-detection.md) and [comparison.md#when-to-combine](./comparison.md#when-to-combine).
 
 ## Composing with scraping frameworks
 

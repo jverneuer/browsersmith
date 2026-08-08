@@ -1,28 +1,49 @@
 /**
- * Platform default wiring for browsercore.
+ * Platform composition root for browsersmith.
  *
- * This module is the single seam for platform-specific defaults. It exports
- * the default implementations of the injectable dependencies (CryptoProvider,
- * Clock, Net, DnsResolver) so that the rest of the codebase can depend on
- * these abstractions without hard-coding Node.js-specific implementations.
+ * This module builds the singleton {@link Platform} instance that threads
+ * all runtime dependencies through the stack. browsersmith is the ONLY
+ * package allowed to import `node:*` modules — every other package depends
+ * on `@browsercore/contracts` interfaces and receives implementations via
+ * the Platform.
  *
- * The defaults are:
- * - `defaultCryptoProvider`: The Node-backed CryptoProvider from @browsercore/crypto
- * - `defaultClock`: systemClock (Date.now())
- * - `nodeNet`: Node.js TCP adapter (wraps `node:net.connect`)
- * - `nodeDns`: Node.js DNS adapter (wraps `node:dns.lookup`)
- *
- * Callers can override these in tests by passing mock implementations to the
- * connection options.
+ * The default {@link platform} is built once at module load. Tests construct
+ * their own Platform via {@link createPlatform} with mock adapters.
  */
 
-import { crypto as defaultCryptoProvider } from "@browsercore/crypto";
-import { systemClock as defaultClock } from "@browsercore/quic";
+import { createPlatform, type Platform, type PlatformOptions } from "./platform/index.js";
+
+// Re-export createPlatform so consumers can build custom platforms (e.g. tests).
+export { createPlatform };
+export type { PlatformOptions };
 import { setConnectorDeps } from "@browsercore/transport";
-import { nodeNet, nodeDns } from "./net/index.js";
 
-// Initialize the transport package's platform dependencies.
-// This is the one place where the Node adapters are wired into the stack.
-setConnectorDeps({ net: nodeNet, dns: nodeDns });
+/**
+ * The default platform instance — built once at startup.
+ *
+ * Contains the Node.js adapters for all runtime dependencies. Injected into
+ * protocol packages through their options objects. Tests bypass this and
+ * construct a Platform with mock adapters.
+ */
+export const platform: Platform = createPlatform();
 
-export { defaultCryptoProvider, defaultClock };
+// Wire the platform's network adapters into the transport package's connector
+// system. This is needed for the directConnector and createHttpProxy paths
+// that don't receive net/dns through options.
+setConnectorDeps({ net: platform.network.tcp, dns: platform.network.dns });
+
+// Re-export commonly-used platform members for backward compatibility.
+// New code should import from "./platform/index.js" directly.
+export { nodeNet, nodeDns } from "./platform/network/node/index.js";
+export { nodeCryptoProvider } from "./platform/crypto/node/index.js";
+export { nodeCompression } from "./platform/compression/node/index.js";
+export { nodeEventProvider } from "./platform/events/node/index.js";
+export { noOpTelemetry } from "./platform/telemetry/noop/index.js";
+export { nodeTime } from "./platform/time/node/index.js";
+
+// Legacy aliases — these match the old export names so existing consumers
+// (crawl.ts, tests) keep working during the migration.
+/** @deprecated Use `platform.crypto.provider` instead. */
+export const defaultCryptoProvider = platform.crypto.provider;
+/** @deprecated Use `platform.time` instead. */
+export const defaultClock = platform.time;

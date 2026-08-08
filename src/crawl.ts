@@ -12,10 +12,8 @@ import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type DatagramTransport, type UdpAddress } from "@browsercore/quic";
-import { crypto } from "@browsercore/crypto";
 import { CHROME_140 } from "./profiles.js";
-import { defaultClock } from "./wiring.js";
-import { nodeNet, nodeDns } from "./net/index.js";
+import { platform } from "./wiring.js";
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -78,16 +76,6 @@ export interface CrawlResult {
 /** Default per-host concurrency — serial by default to be polite. */
 const DEFAULT_CONCURRENCY = 1;
 
-/** Sleep helper that resolves after `ms` (no-op when 0). */
-function sleep(ms: number): Promise<void> {
-    if (ms <= 0) {
-        return Promise.resolve();
-    }
-    return new Promise<void>((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
-
 /**
  * Default QUIC connection-id length (bytes) we generate for the HTTP/3 path.
  * 8 bytes matches the common browser/ server default and keeps the long-header
@@ -97,7 +85,7 @@ const QUIC_CONNECTION_ID_LEN = 8;
 
 /** Generate a random QUIC connection id of `length` bytes. */
 const randomConnectionId = (length: number): ConnectionId =>
-    makeConnectionId(crypto.randomBytes(length));
+    makeConnectionId(platform.crypto.provider.randomBytes(length));
 
 /** Resolve the UDP address family for a host string (naive IPv6 detection). */
 function familyForHost(host: string): 4 | 6 {
@@ -153,7 +141,7 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
-        clock: defaultClock,
+        clock: platform.time,
     });
 
     const http3 = await connectHttp3({
@@ -227,8 +215,8 @@ export async function crawl(
     const clientOptions: { -readonly [K in keyof FetchClientOptions]: FetchClientOptions[K] } = {
         profile,
         cookieJar: jar,
-        net: nodeNet,
-        dns: nodeDns,
+        net: platform.network.tcp,
+        dns: platform.network.dns,
     };
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;
@@ -281,7 +269,7 @@ export async function crawl(
                 }
             }
             // oxlint-disable-next-line no-await-in-loop — sequential delay between batches is intentional for politeness
-            await sleep(delayMs);
+            await platform.time.sleep(delayMs);
         }
     }
     const workers: Promise<void>[] = [];

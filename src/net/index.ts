@@ -1,11 +1,12 @@
 /**
- * Platform-agnostic barrel for BrowserCore's runtime adapters.
+ * @deprecated Import from `./platform/network/node/index.js` instead.
  *
- * Currently exports the Node.js adapters. Future runtimes (Bun, Deno, ...)
- * add their own subfolder and re-export here.
+ * This re-export exists for backward compatibility during the migration to the
+ * platform composition root. New code should import directly from the platform
+ * adapters.
  */
 
-export { nodeNet, nodeDns } from "./node/index.js";
+export { nodeNet, nodeDns, nodeUdp } from "../platform/network/node/index.js";
 
 // Re-export the contracts so consumers can pull everything from one place.
 export type { Net, Socket, DnsResolver, ConnectOptions, IPAddress } from "@browsercore/contracts";

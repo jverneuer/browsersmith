@@ -131,7 +131,7 @@ for (const r of results) {
 }
 ```
 
-A failed URL becomes `{ ok: false, error }` in the result array — it does NOT abort the whole crawl. For the full scraping pattern (retries, dedupe, queues), compose with Crawlee — see [use-cases/scraping.md](./use-cases/scraping.md).
+A failed URL becomes `{ ok: false, error }` in the result array — it does NOT abort the whole crawl. For the full scraping pattern (retries, dedupe, queues), compose with Crawlee — see [scraping.md](./scraping.md).
 
 ## HTTP/3 (experimental)
 
@@ -224,6 +224,50 @@ console.log(res.status, (await res.text()).slice(0, 80));
 ```
 
 `registerProfile(profile)` takes a full `BrowserProfile` (not an id + options) and overwrites any existing profile with the same `id`. See [profiles.md](./profiles.md#registering-your-own-profile) for load-bearing fields per layer.
+
+## Custom Transport recipe
+
+The `Transport` interface is the seam: `read()`, `write(buf)`, `close()`. The default is TCP via `@browsercore/transport`'s `connect({ host, port })`, but anything with that shape plugs in through `createClient`'s `transportFactory` option. A logging wrapper is the simplest illustration — wrap the default transport and tee every byte to a callback without changing semantics:
+
+```typescript
+import { createClient, PROFILES } from "browsersmith";
+import { connect } from "@browsercore/transport";
+import type { Transport } from "@browsercore/transport";
+
+function loggingTransport(
+  inner: Transport,
+  log: (dir: "in" | "out", buf: Uint8Array) => void,
+): Transport {
+  return {
+    async read() {
+      const chunk = await inner.read();
+      if (chunk) log("in", chunk);
+      return chunk;
+    },
+    async write(buf) {
+      log("out", buf);
+      return inner.write(buf);
+    },
+    close() {
+      return inner.close();
+    },
+  };
+}
+
+const client = createClient({
+  profile: PROFILES["chrome-140"],
+  transportFactory: (host, port) =>
+    loggingTransport(connect({ host, port }), (dir, buf) =>
+      console.log(`${dir} ${buf.length} bytes`),
+    ),
+});
+
+const res = await client.fetch("https://example.com");
+console.log(res.status, (await res.text()).slice(0, 80));
+await client.close();
+```
+
+`transportFactory` receives `(host, port)` and returns a `Transport` (or a `Promise<Transport>`). For tests, swap in an in-memory loopback instead of TCP — the protocol layers behave identically because they only touch the `Transport` surface. See [architecture.md](./architecture.md#what-swaps-at-which-layer) for the full swappability table.
 
 ## Consuming the response body
 
