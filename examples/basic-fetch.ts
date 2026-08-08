@@ -8,14 +8,15 @@
  * Run: `npx tsx examples/basic-fetch.ts`
  */
 
-import { fetch, FetchError, FetchTimeoutError, PROFILES } from "../src/index.js";
+import { fetch, platform, FetchError, FetchTimeoutError, PROFILES } from "../src/index.js";
 
 async function main(): Promise<void> {
     const url = process.argv[2] ?? "https://example.com";
 
     // fetch() creates a one-shot client. Pass a profile to impersonate that
-    // browser at the wire level. PROFILES.chrome-140 pins the profile id so
-    // crawls stay reproducible.
+    // browser at the wire level, and the platform so net/dns adapters flow
+    // down through the options chain. PROFILES.chrome-140 pins the profile id
+    // so crawls stay reproducible.
     try {
         const response = await fetch(url, {
             profile: PROFILES["chrome-140"],
@@ -24,7 +25,7 @@ async function main(): Promise<void> {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "accept-language": "en-US,en;q=0.9",
             },
-        });
+        }, platform);
 
         console.log("status:    ", response.status, response.statusText);
         console.log("final url: ", response.url);
