@@ -39,5 +39,5 @@ export { nodeTime } from "./platform/time/node/index.js";
 // (crawl.ts, tests) keep working during the migration.
 /** @deprecated Use `platform.crypto.provider` instead. */
 export const defaultCryptoProvider = platform.crypto.provider;
-/** @deprecated Use `platform.time` instead. */
-export const defaultClock = platform.time;
+/** @deprecated Use `platform.time.clock` instead. */
+export const defaultClock = platform.time.clock;
