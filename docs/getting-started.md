@@ -129,8 +129,8 @@ If you opt into the experimental HTTP/3 path, the same `try/catch` will addition
 
 - **"I want recipes."** → [examples.md](./examples.md) — cookies, crawl, custom profile, errors.
 - **"I want to understand the stack."** → [architecture.md](./architecture.md) — the layer cake.
-- **"I'm scraping."** → [use-cases/scraping.md](./use-cases/scraping.md) — defeating bot detection with `crawl()`.
-- **"I'm deploying to Lambda."** → [use-cases/serverless.md](./use-cases/serverless.md) — packaging, cold start, HTTP/3 caveats.
+- **"I'm scraping."** → [scraping.md](./scraping.md) — defeating bot detection with `crawl()`.
+- **"I'm deploying to Lambda."** → [serverless.md](./serverless.md) — packaging, cold start, HTTP/3 caveats.
 
 ## Sources
 

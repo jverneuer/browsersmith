@@ -1,5 +1,5 @@
 /**
- * Unit tests for the Node.js DNS adapter (`src/net/node/dns.ts`).
+ * Unit tests for the Node.js DNS adapter (`src/platform/network/node/dns.ts`).
  *
  * `nodeDns` wraps `node:dns.lookup` (callback-style) into the Promise-based
  * `@browsercore/contracts` DnsResolver interface. We mock `node:dns` to avoid
@@ -15,7 +15,7 @@ vi.mock("node:dns", () => ({
 }));
 
 import { lookup as dnsLookup } from "node:dns";
-import { nodeDns } from "../../src/net/node/index.js";
+import { nodeDns } from "../../src/platform/network/node/index.js";
 import type { IPAddress } from "@browsercore/contracts";
 
 const mockedLookup = vi.mocked(dnsLookup);

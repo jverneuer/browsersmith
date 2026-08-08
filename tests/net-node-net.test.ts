@@ -1,5 +1,5 @@
 /**
- * Unit tests for the Node.js TCP adapter (`src/net/node/net.ts`).
+ * Unit tests for the Node.js TCP adapter (`src/platform/network/node/net.ts`).
  *
  * `nodeNet` wraps `node:net.connect` so it satisfies the platform-agnostic
  * `@browsercore/contracts` Net interface. We mock `node:net` to avoid real
@@ -16,7 +16,7 @@ vi.mock("node:net", () => ({
 }));
 
 import { connect as netConnect } from "node:net";
-import { nodeNet } from "../../src/net/node/index.js";
+import { nodeNet } from "../../src/platform/network/node/index.js";
 import type { Socket, ConnectOptions } from "@browsercore/contracts";
 
 const mockedConnect = vi.mocked(netConnect);

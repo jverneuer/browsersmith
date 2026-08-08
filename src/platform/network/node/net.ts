@@ -16,7 +16,7 @@ import type { Net, Socket, ConnectOptions } from "@browsercore/contracts";
  *
  * ```ts
  * import { connect } from "@browsercore/transport";
- * import { nodeNet, nodeDns } from "./net/node/index.js";
+ * import { nodeNet, nodeDns } from "./index.js";
  *
  * const transport = await connect({ host, port, net: nodeNet, dns: nodeDns });
  * ```

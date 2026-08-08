@@ -20,7 +20,7 @@ Legend: *primary* = the detector's main signal · *secondary* = checked as corro
 
 ## Layer map: which browsersmith layer controls which signal
 
-Every fingerprint signal in the matrix has a single owning `@browsercore/*` layer and a single owning config field. When a detector blocks you, the layer map tells you which knob to turn. See [architecture.md#where-the-fingerprint-lives](../architecture.md#where-the-fingerprint-lives) for the deeper stack walk. The HTTP/3 row is experimental — opt-in via `crawl({ http3: factory })`, one fresh connection per URL, no cookie-jar coordination with the h2 path. If a detector is HTTP/3-only, browsersmith's HTTP/3 path probably won't fool it yet.
+Every fingerprint signal in the matrix has a single owning `@browsercore/*` layer and a single owning config field. When a detector blocks you, the layer map tells you which knob to turn. See [architecture.md#where-the-fingerprint-lives](./architecture.md#where-the-fingerprint-lives) for the deeper stack walk. The HTTP/3 row is experimental — opt-in via `crawl({ http3: factory })`, one fresh connection per URL, no cookie-jar coordination with the h2 path. If a detector is HTTP/3-only, browsersmith's HTTP/3 path probably won't fool it yet.
 
 | Fingerprint signal | `@browsercore/*` layer | Config field |
 |---|---|---|
@@ -49,7 +49,7 @@ PerimeterX / HUMAN's signal mix is similar to DataDome — JA3/JA4 + HTTP/2 + he
 
 ## When fingerprints aren't enough
 
-For targets that issue a JS challenge on every request — Cloudflare's "Under Attack" mode, DataDome full-bot-protection, HUMAN Press & Hold — no amount of wire-fingerprint matching will help. The challenge requires executing JavaScript, which browsersmith never does (we are not a browser). Two options: (a) use a real browser (`puppeteer-extra` + `puppeteer-extra-plugin-stealth`) for the challenge, harvest the session cookie, then use browsersmith for data-fetching; (b) use a captcha-solving service. See [comparison.md#when-to-combine](../comparison.md#when-to-combine) and [scraping.md](./scraping.md).
+For targets that issue a JS challenge on every request — Cloudflare's "Under Attack" mode, DataDome full-bot-protection, HUMAN Press & Hold — no amount of wire-fingerprint matching will help. The challenge requires executing JavaScript, which browsersmith never does (we are not a browser). Two options: (a) use a real browser (`puppeteer-extra` + `puppeteer-extra-plugin-stealth`) for the challenge, harvest the session cookie, then use browsersmith for data-fetching; (b) use a captcha-solving service. See [comparison.md#when-to-combine](./comparison.md#when-to-combine) and [scraping.md](./scraping.md).
 
 ## Debugging your fingerprint
 
@@ -57,7 +57,7 @@ When a target still blocks you, verify what browsersmith is actually sending. Th
 
 1. **`https://tls.peet.ws/api/all`** — the canonical JA3/JA4 + HTTP/2 Akamai-fingerprint oracle. Returns your request's fingerprints as JSON.
 2. **`https://browserleaks.com/tls`** — browser-friendly view of the same signals.
-3. **`@browsercore/devtools`** — local inspector that renders the outgoing ClientHello + HTTP/2 frames in an HTML view. See [packages.md#browsercore-devtools](../packages.md#browsercore-devtools).
+3. **`@browsercore/devtools`** — local inspector that renders the outgoing ClientHello + HTTP/2 frames in an HTML view. See [packages.md#browsercore-devtools](./packages.md#browsercore-devtools).
 
 ```typescript
 import { fetch, PROFILES } from "browsersmith";
@@ -76,7 +76,7 @@ If any of the three diverges from the published Chrome 140 values, file an issue
 ## Patterns to avoid
 
 - **Don't fingerprint-rotate per-request.** A session that re-negotiates its TLS fingerprint between requests looks like a bot. Pick one profile per session and stick to it.
-- **Don't mix a Chrome TLS profile with a Firefox `User-Agent`.** Instant tell. Profiles ship with a matching UA hint — use it. See [profiles.md](../profiles.md).
+- **Don't mix a Chrome TLS profile with a Firefox `User-Agent`.** Instant tell. Profiles ship with a matching UA hint — use it. See [profiles.md](./profiles.md).
 - **Don't warm up with Node's default `fetch()`, and don't run `axios` or `got` in the same process.** Their default agents leak a non-browser TLS fingerprint. Use browsersmith for every outbound request, or isolate the other client to a subprocess.
 - **Don't ignore `Retry-After`.** Hammering past a 429 burns the IP and the cookie.
 - **Don't reuse a `CookieJar` across profiles or target domains.** Cookies leak across profiles (`cf_clearance` under `chrome-140` won't validate under `firefox-128`) and across domains (DataDome cookies are domain-scoped). One jar per (profile, target) pair.
