@@ -1,4 +1,6 @@
-# browsersmith
+![header](docs/browsersmith.png)
+
+---
 
 [![npm version](https://img.shields.io/npm/v/browsersmith)](https://www.npmjs.com/package/browsersmith)
 [![coverage](https://img.shields.io/endpoint?url=https://jverneuer.github.io/browsersmith/badge.json)](https://github.com/jverneuer/browsersmith/blob/main/COVERAGE.md)
