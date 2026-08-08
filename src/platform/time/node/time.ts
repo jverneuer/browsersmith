@@ -27,7 +27,7 @@ export class NodeTime implements Time {
 
     setTimeout(callback: () => void, delayMs: number): () => void {
         const handle = setTimeout(callback, delayMs);
-        return () => clearTimeout(handle);
+        return () => { clearTimeout(handle); };
     }
 
     sleep(ms: number): Promise<void> {
