@@ -75,14 +75,14 @@ describe("e2e: content-encoding decompression", () => {
     // the registry, we verify the codec directly and the wire framing via the
     // identity path above.
     it("the @browsercore/compression codec decodes real gzip + deflate bytes", async () => {
-        const { compression } = await import("@browsercore/compression");
+        const { nodeCompression } = await import("../src/platform/compression/node/compression.js");
         const { gzipSync, deflateSync } = await import("node:zlib");
-        const gz = compression.decompress(
+        const gz = nodeCompression.decompress(
             new Uint8Array(gzipSync(Buffer.from("gzip-payload"))),
             "gzip",
         );
         expect(new TextDecoder().decode(gz)).toBe("gzip-payload");
-        const def = compression.decompress(
+        const def = nodeCompression.decompress(
             new Uint8Array(deflateSync(Buffer.from("deflate-payload"))),
             "deflate",
         );
