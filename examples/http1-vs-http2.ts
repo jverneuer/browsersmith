@@ -11,7 +11,7 @@
  * Run: `npx tsx examples/http1-vs-http2.ts`
  */
 
-import { createClient, createCookieJar, PROFILES } from "../src/index.js";
+import { createClient, createCookieJar, PROFILES, nodeEventProvider } from "../src/index.js";
 
 async function probe(url: string): Promise<void> {
     // A shared client pools connections per origin. The profile drives both the
@@ -20,6 +20,7 @@ async function probe(url: string): Promise<void> {
     const client = createClient({
         profile: PROFILES["chrome-140"],
         cookieJar: jar,
+        events: nodeEventProvider,
     });
 
     try {

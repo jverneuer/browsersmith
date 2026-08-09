@@ -6,5 +6,5 @@
  * platform-agnostic Time interface.
  */
 
-export { NodeTime, nodeTime } from "./time.js";
+export { nodeTime } from "./time.js";
 export type { Time } from "./time-types.js";

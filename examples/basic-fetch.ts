@@ -8,7 +8,7 @@
  * Run: `npx tsx examples/basic-fetch.ts`
  */
 
-import { fetch, FetchError, FetchTimeoutError, PROFILES } from "../src/index.js";
+import { fetch, FetchError, FetchTimeoutError, PROFILES, platform } from "../src/index.js";
 
 async function main(): Promise<void> {
     const url = process.argv[2] ?? "https://example.com";
@@ -24,7 +24,7 @@ async function main(): Promise<void> {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "accept-language": "en-US,en;q=0.9",
             },
-        });
+        }, platform);
 
         console.log("status:    ", response.status, response.statusText);
         console.log("final url: ", response.url);

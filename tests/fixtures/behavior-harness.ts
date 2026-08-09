@@ -7,6 +7,7 @@ import { createClient, type FetchClient, type FetchOptions } from "@browsercore/
 import { connectHttp1 } from "@browsercore/http1";
 import type { Transport } from "@browsercore/transport";
 import { connect as connectNet } from "node:net";
+import { NodeEventProvider } from "../../src/platform/events/node/event-provider.js";
 import { LoopbackTransport, loopbackTransportFactory } from "./fake-transport.js";
 import { startBehaviorServer, stopBehaviorServer } from "./behavior-server.js";
 
@@ -19,6 +20,7 @@ export interface BehaviorHarness {
 export async function setupBehavior(): Promise<BehaviorHarness> {
     const { server, baseUrl, port } = await startBehaviorServer();
     const client = createClient({
+        events: new NodeEventProvider(),
         transportFactory: loopbackTransportFactory(port),
     });
     return {

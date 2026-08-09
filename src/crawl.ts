@@ -12,7 +12,7 @@ import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type UdpAddress } from "@browsercore/quic";
-import type { DatagramTransport } from "@browsercore/contracts";
+import { type DatagramTransport, Duration } from "@browsercore/contracts";
 import { CHROME_140 } from "./profiles.js";
 import { platform } from "./wiring.js";
 
@@ -143,12 +143,13 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
-        clock: platform.time,
+        clock: platform.time.clock,
     });
 
     const http3 = await connectHttp3({
         quic: quic as unknown as Parameters<typeof connectHttp3>[0]["quic"],
         settingsAckTimeoutMs: handshakeTimeoutMs,
+        events: platform.events,
     });
 
     try {
@@ -219,6 +220,7 @@ export async function crawl(
         cookieJar: jar,
         net: platform.network.tcp,
         dns: platform.network.dns,
+        events: platform.events,
     };
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;
@@ -271,7 +273,7 @@ export async function crawl(
                 }
             }
             // oxlint-disable-next-line no-await-in-loop — sequential delay between batches is intentional for politeness
-            await platform.time.sleep(delayMs);
+            await platform.time.scheduler.delay(Duration.milliseconds(delayMs));
         }
     }
     const workers: Promise<void>[] = [];

@@ -1,22 +1,21 @@
 /**
  * Tests for the wiring module (`src/wiring.ts`).
  *
- * The wiring module exports the default implementations of the injectable
- * dependencies (CryptoProvider, Clock). These tests verify that the exports
- * are defined and have the expected shape.
+ * The wiring module exports the singleton Platform. These tests verify that
+ * the platform's time clock is defined and has the expected shape.
  */
 
 import { describe, it, expect } from "vitest";
-import { defaultClock } from "../src/wiring.js";
+import { platform } from "../src/wiring.js";
 
 describe("wiring", () => {
-    it("exports a defaultClock with now method", () => {
-        expect(defaultClock).toBeDefined();
-        expect(typeof defaultClock.now).toBe("function");
+    it("exposes a platform.time.clock with now method", () => {
+        expect(platform.time.clock).toBeDefined();
+        expect(typeof platform.time.clock.now).toBe("function");
     });
 
-    it("defaultClock.now returns a number", () => {
-        const now = defaultClock.now();
+    it("platform.time.clock.now returns a number", () => {
+        const now = platform.time.clock.now();
         expect(typeof now).toBe("number");
         expect(now).toBeGreaterThan(0);
     });

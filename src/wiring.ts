@@ -26,8 +26,8 @@ export type { PlatformOptions };
  */
 export const platform: Platform = createPlatform();
 
-// Re-export commonly-used platform members for backward compatibility.
-// New code should import from "./platform/index.js" directly.
+// Re-export commonly-used platform members so consumers can pull the Node.js
+// adapters from the top-level barrel without knowing the internal layout.
 export { nodeNet, nodeDns } from "./platform/network/node/index.js";
 export { nodeCryptoProvider } from "./platform/crypto/node/index.js";
 export { nodeCompression } from "./platform/compression/node/index.js";
@@ -35,9 +35,4 @@ export { nodeEventProvider } from "./platform/events/node/index.js";
 export { noOpTelemetry } from "./platform/telemetry/noop/index.js";
 export { nodeTime } from "./platform/time/node/index.js";
 
-// Legacy aliases — these match the old export names so existing consumers
-// (crawl.ts, tests) keep working during the migration.
-/** @deprecated Use `platform.crypto.provider` instead. */
-export const defaultCryptoProvider = platform.crypto.provider;
-/** @deprecated Use `platform.time` instead. */
-export const defaultClock = platform.time;
+

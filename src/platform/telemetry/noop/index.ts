@@ -6,5 +6,5 @@
  * `createPlatform()`.
  */
 
-export { NoOpTelemetry, noOpTelemetry } from "./no-op-telemetry.js";
+export { noOpTelemetry } from "./no-op-telemetry.js";
 export type { Telemetry } from "./telemetry-types.js";

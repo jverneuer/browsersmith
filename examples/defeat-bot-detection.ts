@@ -14,7 +14,7 @@
  * Run: `npx tsx examples/defeat-bot-detection.ts`
  */
 
-import { createClient, PROFILES } from "../src/index.js";
+import { createClient, PROFILES, nodeEventProvider } from "../src/index.js";
 import { startBotServer, stopBotServer, createFixtureState } from "../tests/fixtures/bot-server.js";
 import { loopbackTransportFactory } from "../tests/fixtures/fake-transport.js";
 
@@ -33,6 +33,7 @@ export async function runAgainstBotFixture(): Promise<void> {
         // browser → the fixture's detector accepts the request.
         const client = createClient({
             profile: PROFILES["chrome-140"],
+            events: nodeEventProvider,
             transportFactory: loopbackTransportFactory(port),
         });
         // First hit /protected → challenge issued (sets bc_challenge cookie).
