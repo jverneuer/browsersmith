@@ -10,6 +10,7 @@
 import { createClient, type FetchClient, type FetchOptions } from "@browsercore/fetch";
 import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
+import { NodeEventProvider } from "../../src/platform/events/node/event-provider.js";
 import {
     startBotServer,
     stopBotServer,
@@ -55,6 +56,7 @@ export async function setupHarness(options?: {
     const client = createClient({
         profile: options?.profile ?? ("chrome-140" as ProfileId),
         cookieJar: jar,
+        events: new NodeEventProvider(),
         transportFactory: loopbackTransportFactory(port),
     });
     const baseUrl = `http://localhost:${port}`;

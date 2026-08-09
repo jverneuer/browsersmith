@@ -50,7 +50,7 @@
         "@browsercore/profiles": "0.2.0",
         "@browsercore/quic": "0.2.2",
         "@browsercore/tls": "0.4.1",
-        "@browsercore/transport": "^0.2.4"
+        "@browsercore/transport": "0.2.4"
     },
     "devDependencies": {
         "@types/node": "^26.1.2",
@@ -62,7 +62,7 @@
         "vitest": "^4.1.10"
     },
     "overrides": {
-        "@browsercore/transport": "^0.2.4",
+        "@browsercore/transport": "0.2.4",
         "@browsercore/tls": "0.4.1"
     }
 }

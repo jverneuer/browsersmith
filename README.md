@@ -19,13 +19,13 @@ independently swappable.
 ## What it does
 
 ```typescript
-import { fetch, createClient } from "browsersmith";
+import { fetch, createClient, platform } from "browsersmith";
 
 // One-shot fetch with a real browser fingerprint:
-const response = await fetch("https://example.com", { profile: "chrome-140" });
+const response = await fetch("https://example.com", { profile: "chrome-140" }, platform);
 
 // Reusable client for connection pooling:
-const client = createClient({ profile: "chrome-140" });
+const client = createClient({ profile: "chrome-140", events: platform.events });
 try {
     const r1 = await client.fetch("https://example.com");
     const r2 = await client.fetch("https://example.com/api", { method: "POST" });

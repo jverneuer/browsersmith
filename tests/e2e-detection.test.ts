@@ -13,6 +13,7 @@ import { createClient } from "@browsercore/fetch";
 import { setupHarness, fetchPath, withBrowserHeaders, BOT_UA, type Harness } from "./fixtures/harness.js";
 import { loopbackTransportFactory } from "./fixtures/fake-transport.js";
 import { ACCEPTED_USER_AGENTS } from "./fixtures/bot-server.js";
+import { NodeEventProvider } from "../src/platform/events/node/event-provider.js";
 
 describe("e2e: crawler-detection defeat", () => {
     let h: Harness;
@@ -72,6 +73,7 @@ describe("e2e: crawler-detection defeat", () => {
         // looks like a sparse bot client → the fixture rejects it. We omit the
         // profile here so its defaults don't backfill the missing headers.
         const botClient = createClient({
+            events: new NodeEventProvider(),
             transportFactory: loopbackTransportFactory(h.port),
         });
         const res = await botClient.fetch(`${h.baseUrl}/`, {

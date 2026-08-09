@@ -149,6 +149,7 @@ async function fetchHttp3(
     const http3 = await connectHttp3({
         quic: quic as unknown as Parameters<typeof connectHttp3>[0]["quic"],
         settingsAckTimeoutMs: handshakeTimeoutMs,
+        events: platform.events,
     });
 
     try {
@@ -219,6 +220,7 @@ export async function crawl(
         cookieJar: jar,
         net: platform.network.tcp,
         dns: platform.network.dns,
+        events: platform.events,
     };
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;

@@ -29,12 +29,12 @@ npm install browsersmith
 Pass a profile to `fetch()` and the bytes on the wire — TLS ClientHello, HTTP/2 SETTINGS frame, header order, GREASE — match Chrome 140 (or Firefox 128) byte-for-byte. That's why a site that 403s the stock Node `fetch` will respond 200 here.
 
 ```typescript
-import { fetch, PROFILES } from "browsersmith";
+import { fetch, PROFILES, platform } from "browsersmith";
 
 const res = await fetch("https://example.com", {
   profile: PROFILES["chrome-140"],
   timeoutMs: 15_000,
-});
+}, platform);
 
 console.log(res.status, res.statusText); // 200 OK
 console.log(res.url);                    // https://example.com (after redirects)
@@ -68,11 +68,12 @@ Every `fetch()` call spins up a fresh client, handshakes TLS, and tears it down 
 One thing to get right up front: `createClient()` is **synchronous**. It returns a `FetchClient`, not a `Promise<FetchClient>`. Don't write `await createClient(...)` — there is no `await` to drop, and the old README / `llm.txt` examples that show one are drift. The function builds the client inline and hands it back ready to use.
 
 ```typescript
-import { createClient, PROFILES, createCookieJar } from "browsersmith";
+import { createClient, PROFILES, createCookieJar, platform } from "browsersmith";
 
 const client = createClient({
   profile: PROFILES["chrome-140"],
   cookieJar: createCookieJar(),
+  events: platform.events,
   timeoutMs: 15_000,
 });
 
