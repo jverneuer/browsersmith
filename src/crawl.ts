@@ -12,8 +12,7 @@ import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type UdpAddress } from "@browsercore/quic";
-import type { DatagramTransport } from "@browsercore/contracts";
-import { Duration } from "@browsercore/contracts";
+import { type DatagramTransport, Duration } from "@browsercore/contracts";
 import { CHROME_140 } from "./profiles.js";
 import { platform } from "./wiring.js";
 

@@ -27,7 +27,7 @@ export const nodeTime: Time = {
     },
     scheduler: {
         delay: (d: Duration, signal?: AbortSignal) =>
-            nodeDelay(d.milliseconds, undefined, { signal, ref: false }).then(() => undefined),
+            nodeDelay(d.milliseconds, undefined, { signal, ref: false }),
         timeout: (d: Duration) => AbortSignal.timeout(d.milliseconds),
         deadline: (d: Duration) => ({
             signal: AbortSignal.timeout(d.milliseconds),

@@ -22,8 +22,7 @@ import {
     brotliDecompressSync,
 } from "node:zlib";
 import type { CompressionProvider, ContentEncoding } from "@browsercore/contracts";
-import { DecompressionError, UnsupportedEncodingError, ensureCompressionError } from "@browsercore/compression";
-import { assertNever } from "@browsercore/compression";
+import { DecompressionError, UnsupportedEncodingError, ensureCompressionError, assertNever } from "@browsercore/compression";
 
 /**
  * The native zlib backend's output: a Node `Buffer` (a `Uint8Array` subclass)
