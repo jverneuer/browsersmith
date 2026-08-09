@@ -11,6 +11,11 @@ Composes independently published `@browsercore/*` packages into a single `fetch(
 whose TLS ClientHello (JA3/JA4), HTTP/2 SETTINGS, and header ordering match
 Chrome or Firefox byte-for-byte, defeating bot-detection services.
 
+browsersmith is the **composition root** — the only package allowed `node:*`
+imports. It builds a single `Platform` object that threads runtime capabilities
+down through options, making every protocol package runtime-agnostic and
+independently swappable.
+
 ## What it does
 
 ```typescript
@@ -31,42 +36,57 @@ try {
 
 ## Architecture
 
-The monorepo follows a strict layered architecture. Dependencies flow downward —
-a package may only import from packages below it in the graph.
-
 ```
-@browsercore/contracts (shared interfaces, models, IANA codes, options)
+@browsercore/contracts (shared interfaces + Platform service contracts)
         ▲
         │
- ┌──────┼─────────────┬──────────┐
- │      │             │          │
- ▼      ▼             ▼          ▼
-tls    http2       transport   profiles
- │       │             │          │
- └───────┴──────┬──────┘          │
-                │                 │
-                ▼                 │
-         @browsercore/quic ◄──────┘
-                │
-                ▼
-        @browsercore/http3
-                │
-                ▼
-      @browsercore/fetch
-                │
-                ▼
-    @browsercore/browsersmith (entrypoint)
+  ┌──────┼─────────────────────────────┐
+  │      │                             │
+  ▼      ▼                             ▼
+transport   tls   http1   http2   http3   quic   fetch   crypto   compression
+  │         │      │       │       │       │       │        │         │
+  └─────────┴──────┴───────┴───────┴───────┴───────┴────────┴─────────┘
+                                    ▼
+                           browsersmith (composition root — builds Platform)
 ```
+
+## Platform
+
+The `Platform` object groups runtime capabilities **per-service**, then
+per-runtime. Adding a new runtime (Bun, Deno, Workers) means implementing
+each service's interfaces — no protocol package changes.
+
+```ts
+interface Platform {
+    readonly network: Network;         // tcp + dns + udp
+    readonly crypto: Crypto;           // provider (single randomness source)
+    readonly compression: Compression; // gzip/deflate/brotli sync shape
+    readonly events: EventProvider;    // EventTarget-backed emitter
+    readonly telemetry: Telemetry;     // logger + tracer + metrics
+    readonly time: Time;               // clock + scheduler (composable deadlines)
+}
+```
+
+### Platform services (in `src/platform/`)
+
+| Service | Node adapter | Contract |
+|---------|-------------|----------|
+| **network** | `network/node/{net,dns,udp}.ts` | `Network { tcp, dns, udp }` |
+| **crypto** | `crypto/node/node-crypto-provider.ts` | `Crypto { provider }` |
+| **compression** | `compression/node/compression.ts` | `Compression` |
+| **events** | `events/node/event-provider.ts` | `EventProvider` |
+| **telemetry** | `telemetry/noop/no-op-telemetry.ts` | `NoOpTelemetry` (default) |
+| **time** | `time/node/time.ts` | `Time { clock, scheduler }` |
 
 ## Packages
 
-### Leaf packages (no internal dependencies)
+### Leaf packages (no `node:*` imports)
 | Package | Purpose |
 |---------|---------|
-| **@browsercore/contracts** | Shared interfaces, models, IANA wire codes, options |
-| **@browsercore/crypto** | AEAD, HKDF, X25519, hashing |
-| **@browsercore/transport** | TCP + DNS byte stream |
-| **@browsercore/compression** | gzip/deflate/brotli/zstd |
+| **@browsercore/contracts** | Shared interfaces, Platform service contracts, models, IANA codes |
+| **@browsercore/crypto** | Pure types, errors, utils (Node backend in browsersmith) |
+| **@browsercore/transport** | TCP + DNS byte stream (event backend injected) |
+| **@browsercore/compression** | Pure types, errors, utils (Node backend in browsersmith) |
 | **@browsercore/cookies** | RFC 6265 cookie jar |
 
 ### Layer 1 (protocol primitives)
@@ -91,19 +111,9 @@ tls    http2       transport   profiles
 ### Entrypoint & tooling
 | Package | Purpose |
 |---------|---------|
-| **browsersmith** | Customer-facing entrypoint, `crawl()` helper |
+| **browsersmith** | Composition root + customer-facing entrypoint, `crawl()` helper |
 | **@browsercore/devtools** | Packet inspector, visualizers, CLI |
 | **@browsercore/testing** | Golden captures, protocol verification |
-
-## Provider Interfaces
-
-The stack uses three provider interfaces to decouple protocol logic from platform I/O:
-
-| Interface | Package | Backend | What it abstracts |
-|-----------|---------|---------|-------------------|
-| `CryptoProvider` | `@browsercore/crypto` | `NodeCryptoProvider` → `node:crypto` | AEAD, HKDF, hashing, X25519, signatures |
-| `CompressionProvider` | `@browsercore/compression` | `NodeZlibProvider` → `node:zlib` | gzip/deflate/brotli/zstd |
-| `Transport` | `@browsercore/transport` | `TcpTransport` → `node:net` + `node:dns` | Reliable ordered byte stream |
 
 ## Data Flow
 
