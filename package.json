@@ -1,6 +1,6 @@
 {
     "name": "browsersmith",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "private": false,
     "description": "Browsersmith \u2014 browser-identical TLS + HTTP fingerprints behind a single fetch(), composing the browsercore networking stack.",
     "license": "MIT",
@@ -49,7 +49,7 @@
         "@browsercore/http3": "^0.1.8",
         "@browsercore/profiles": "^0.2.0",
         "@browsercore/quic": "^0.2.3",
-        "@browsercore/tls": "^0.4.2",
+        "@browsercore/tls": "^0.4.3",
         "@browsercore/transport": "^0.2.5"
     },
     "devDependencies": {
@@ -63,6 +63,6 @@
     },
     "overrides": {
         "@browsercore/transport": "^0.2.5",
-        "@browsercore/tls": "^0.4.2"
+        "@browsercore/tls": "^0.4.3"
     }
 }
