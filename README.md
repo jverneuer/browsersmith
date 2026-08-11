@@ -34,6 +34,51 @@ try {
 }
 ```
 
+## Browser Impersonation
+
+Browsersmith impersonates real browsers at the network level — every layer a
+bot detector inspects is reproduced from a browser profile:
+
+- **TLS fingerprinting**: Chrome, Firefox, Safari, Edge profiles with correct
+  cipher-suite ordering, extension ordering, GREASE (RFC 8701), post-quantum key
+  shares (X25519MLKEM768), and signature algorithms. The ClientHello JA3/JA4
+  matches the target browser byte-for-byte.
+- **HTTP/2 fingerprinting**: Browser-specific SETTINGS values, window sizes,
+  and priority semantics. The Akamai HTTP/2 fingerprint (SETTINGS order +
+  WINDOW_UPDATE + PRIORITY frames) matches the target browser.
+- **HTTP/1.1 fingerprinting**: Correct header casing, ordering, and defaults
+  (sec-ch-ua, sec-fetch-*, accept-encoding) for each browser family.
+- **JA3/JA4 validation**: Built-in profile validation against golden captures
+  via `buildExpectedClientHello` and `validateProfileAgainstCapture`.
+
+### Usage
+
+```typescript
+import { fetch, createClient, PROFILES } from "browsersmith";
+
+// One-shot fetch with a real Chrome 140 fingerprint:
+const response = await fetch("https://example.com", {
+    profile: PROFILES["chrome-140"],
+});
+
+// Reusable client for connection pooling + cookie jar:
+const client = createClient({ profile: PROFILES["chrome-140"] });
+```
+
+### Available profiles
+
+| Profile | Browser | Post-quantum key share |
+|---------|---------|----------------------|
+| `chrome-140` | Chrome 140+ | X25519MLKEM768 |
+| `firefox-128` | Firefox 128+ | — |
+
+### Verification
+
+Each profile carries the full fingerprint data that protocol layers translate
+into wire bytes. The test suites in `tests/impersonation-config.test.ts` and
+`tests/fingerprint-computation.test.ts` verify the profile → protocol config →
+ClientHello projection pipeline.
+
 ## Architecture
 
 ```
