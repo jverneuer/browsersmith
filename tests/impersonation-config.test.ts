@@ -12,20 +12,14 @@
  * The wire-level ClientHello assertion lives in @browsercore/tls; the HTTP/2
  * SETTINGS frame assertion lives in @browsercore/http2. Here we verify the
  * data those layers consume.
- *
- * Some fingerprint vectors (EC point formats, compress_certificate algorithms,
- * record padding, HTTP/2 settingsOrder / pseudoHeaderOrder / connectionWindow,
- * HTTP/1.1 headerCasing) are being added on feature branches and are NOT yet
- * present in the published @browsercore/profiles. Those are marked `it.skip`
- * with a TODO referencing the feature branch; they will activate once the dep
- * is bumped and the new profile fields ship.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, expectTypeOf } from "vitest";
 import {
     getProfile,
     type BrowserProfile,
 } from "@browsercore/profiles";
+import type { HeaderCasing } from "@browsercore/http1";
 import { PROFILES } from "../src/profiles.js";
 
 /** The chrome-140 profile under test — the recommended starter alias. */
@@ -118,29 +112,21 @@ describe("impersonation config: TLS fingerprint (chrome-140)", () => {
         expect(sigalgs).toContain("ecdsa_secp384r1_sha384");
     });
 
-    // ── Fields on feature branches (not yet in published profiles) ──────────
+    // ── Impersonation vectors (now in published profiles) ──────────────────
 
-    it.skip("TODO(feature/tls-ec-point-formats): EC point formats are [0x00]", () => {
-        // Real Chrome advertises uncompressed (0x00) only. The profile's
-        // `ecPointFormats` field does not exist in the published @browsercore/
-        // profiles yet — it lands on the tls-impersonation feature branch.
-        expect((profile.tls as unknown as { ecPointFormats?: number[] }).ecPointFormats)
-            .toEqual([0x00]);
+    it("advertises EC point formats as [0x00 (uncompressed)]", () => {
+        // Real Chrome advertises uncompressed (0x00) only.
+        expect(profile.tls.ecPointFormats).toEqual([0x00]);
     });
 
-    it.skip("TODO(feature/tls-compress-cert): compress_certificate algorithms are [0x02 (brotli)]", () => {
-        // Chrome advertises compress_certificate (extension 27) with brotli
-        // (0x02). The profile does not yet carry an `compressCertificateAlgorithms`
-        // field — it lands on the tls-impersonation feature branch.
-        expect((profile.tls as unknown as { compressCertificateAlgorithms?: number[] })
-            .compressCertificateAlgorithms).toEqual([0x02]);
+    it("advertises compress_certificate algorithms as [0x02 (brotli)]", () => {
+        // Chrome advertises compress_certificate (extension 27) with brotli.
+        expect(profile.tls.compressCertificateAlgorithms).toEqual([0x02]);
     });
 
-    it.skip("TODO(feature/tls-record-padding): recordPadding is 512", () => {
-        // Chrome pads ClientHello records to a multiple of 512 bytes. The
-        // profile does not yet carry a `recordPadding` field.
-        expect((profile.tls as unknown as { recordPadding?: number }).recordPadding)
-            .toBe(512);
+    it("pads ClientHello records to a 512-byte multiple", () => {
+        // Chrome pads ClientHello records to a multiple of 512 bytes.
+        expect(profile.tls.recordPadding).toBe(512);
     });
 });
 
@@ -180,37 +166,32 @@ describe("impersonation config: HTTP/2 fingerprint (chrome-140)", () => {
         expect(profile.http2.weight).toBe(256);
     });
 
-    // ── Fields on feature branches (not yet in published profile) ──────────
+    // ── Impersonation vectors (now in published profiles) ──────────────────
 
-    it.skip("TODO(feature/http2-settings-order): settingsOrder is [1, 2, 4, 6]", () => {
+    it("emits settingsOrder as [1, 2, 4, 6]", () => {
         // Chrome emits SETTINGS in a specific order:
         //   1 (HEADER_TABLE_SIZE), 2 (ENABLE_PUSH), 4 (INITIAL_WINDOW_SIZE),
-        //   6 (MAX_HEADER_LIST_SIZE). The profile does not yet carry a
-        //   `settingsOrder` field — it lands on the http2-impersonation branch.
-        expect((profile.http2 as unknown as { settingsOrder?: number[] }).settingsOrder)
-            .toEqual([1, 2, 4, 6]);
+        //   6 (MAX_HEADER_LIST_SIZE).
+        expect(profile.http2.settingsOrder).toEqual([1, 2, 4, 6]);
     });
 
-    it.skip("TODO(feature/http2-pseudo-headers): pseudoHeaderOrder is [method, authority, scheme, path]", () => {
+    it("orders pseudo-headers as [method, authority, scheme, path]", () => {
         // Chrome sends pseudo-headers in :method → :authority → :scheme → :path
-        // order. The profile does not yet carry a `pseudoHeaderOrder` field.
-        expect((profile.http2 as unknown as { pseudoHeaderOrder?: string[] }).pseudoHeaderOrder)
-            .toEqual([":method", ":authority", ":scheme", ":path"]);
+        // order. The profile stores bare names (no colon prefix); the HTTP/2
+        // wire layer prepends ":" when emitting HPACK frames.
+        expect(profile.http2.pseudoHeaderOrder)
+            .toEqual(["method", "authority", "scheme", "path"]);
     });
 
-    it.skip("TODO(feature/http2-window-update): connectionWindowUpdate is 15663105", () => {
+    it("sends a connection-level WINDOW_UPDATE of 15663105 bytes", () => {
         // Chrome sends a connection-level WINDOW_UPDATE of 15663105 bytes
-        // after the initial SETTINGS. The profile does not yet carry this field.
-        expect(
-            (profile.http2 as unknown as { connectionWindowUpdate?: number })
-                .connectionWindowUpdate,
-        ).toBe(15663105);
+        // after the initial SETTINGS.
+        expect(profile.http2.connectionWindowUpdate).toBe(15663105);
     });
 
-    it.skip("TODO(feature/http2-grease): grease flag is true for HTTP/2", () => {
+    it("enables GREASE for HTTP/2 (SETTINGS + pseudo-header)", () => {
         // Chrome inserts a GREASE SETTINGS entry and a GREASE pseudo-header.
-        // The profile does not yet carry an HTTP/2 `grease` flag.
-        expect((profile.http2 as unknown as { grease?: boolean }).grease).toBe(true);
+        expect(profile.http2.grease).toBe(true);
     });
 });
 
@@ -265,14 +246,16 @@ describe("impersonation config: HTTP/1.1 fingerprint (chrome-140)", () => {
         expect(secChUa).toContain("140");
     });
 
-    // ── Fields on feature branches (not yet in published profile) ──────────
+    // ── Impersonation vector: header casing (type from http1 layer) ─────────
 
-    it.skip("TODO(feature/http1-header-casing): headerCasing is set for Chrome", () => {
+    it("exports HeaderCasing with 'title' for Chrome's Title-Case headers", () => {
         // Real Chrome sends headers in Title-Case (e.g. "Accept-Encoding" not
-        // "accept-encoding"). The profile does not yet carry a `headerCasing`
-        // field — it lands on the http1-impersonation feature branch.
-        expect((profile.http1 as unknown as { headerCasing?: string }).headerCasing)
-            .toBeDefined();
+        // "accept-encoding"). The profile itself does not carry a `headerCasing`
+        // field; @browsercore/fetch derives it from the browser family. The
+        // concrete `HeaderCasing` union that drives wire serialization lives in
+        // @browsercore/http1 and must include "title" for Chrome impersonation.
+        expectTypeOf<HeaderCasing>().toMatchTypeOf<"lowercase" | "title" | "original">();
+        expectTypeOf<"title">().toMatchTypeOf<HeaderCasing>();
     });
 });
 
