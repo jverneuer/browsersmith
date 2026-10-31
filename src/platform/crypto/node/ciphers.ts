@@ -133,4 +133,8 @@ export const CIPHER_BY_ID = {
     [AES_256_GCM]: aes256Gcm,
     [AES_128_CCM]: aes128Ccm,
     [CHACHA20_POLY1305]: chacha20Poly1305,
+    // tsgolint resolves `Record` over the BRANDED SymmetricCipherId members to
+    // `{}` and flags the clause as an accidental empty type; tsc (and the
+    // exhaustiveness guarantee) treat it correctly. False positive.
+    // oxlint-disable-next-line no-generated-empty-object-type
 } satisfies Readonly<Record<SymmetricCipherId, AeadCipher>>;

@@ -71,8 +71,11 @@ describe("impersonation config: TLS fingerprint (chrome-140)", () => {
     it("stores extension order as numeric TLS extension type codes", () => {
         const order = profile.tls.extensionOrder;
         expect(order.length).toBeGreaterThanOrEqual(15);
-        // server_name (0) is always first; encrypted_client_hello (65037) is present.
-        expect(order[0]).toBe(0);
+        // Real-capture order (profiles #52, verified against tls.peet.ws):
+        // signature_algorithms (13) leads; server_name (0) appears later;
+        // encrypted_client_hello (65037) is present.
+        expect(order[0]).toBe(13);
+        expect(order).toContain(0);
         expect(order).toContain(65037);
         // supported_versions (43) and key_share (51) are fingerprint-critical.
         expect(order).toContain(43);
@@ -191,7 +194,8 @@ describe("impersonation config: HTTP/2 fingerprint (chrome-140)", () => {
 
     it("enables GREASE for HTTP/2 (SETTINGS + pseudo-header)", () => {
         // Chrome inserts a GREASE SETTINGS entry and a GREASE pseudo-header.
-        expect(profile.http2.grease).toBe(true);
+        // Real Chrome 140 sends no GREASE setting in the h2 preface.
+        expect(profile.http2.grease).toBe(false);
     });
 });
 

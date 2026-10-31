@@ -26,6 +26,7 @@ import {
     CHACHA20_POLY1305,
     UnsupportedAlgorithmError,
     assertNever,
+    NobleMlKem768Backend,
     NobleX25519Backend,
     type X25519Backend,
 } from "@browsercore/crypto";
@@ -33,6 +34,7 @@ import type {
     EcdhCurve,
     EcdhKeyPair,
     HashId,
+    MLKEM768KeyPair,
     X25519KeyPair,
     CryptoProvider,
 } from "@browsercore/contracts";
@@ -55,7 +57,10 @@ function hashAlgorithmName(hash: HashId): string {
 }
 
 export class NodeCryptoProvider implements CryptoProvider {
-    constructor(private readonly x25519: X25519Backend = new NobleX25519Backend()) {}
+    constructor(
+        private readonly x25519: X25519Backend = new NobleX25519Backend(),
+        private readonly mlkem768: NobleMlKem768Backend = new NobleMlKem768Backend(),
+    ) {}
 
     public randomBytes(length: number): Uint8Array {
         return nodeRandomBytes(length);
@@ -174,6 +179,32 @@ export class NodeCryptoProvider implements CryptoProvider {
         // handles the RFC 7748 §5 degenerate (all-zero) u-coordinate correctly,
         // returning the mandated 32 zero bytes — no special-casing needed.
         return this.x25519.sharedSecret(secretKey, peerPublicKey);
+    }
+
+    public mlkem768GenerateKeyPair(): MLKEM768KeyPair {
+        // Pure-TS noble-post-quantum backend: node:crypto has no ML-KEM yet.
+        return this.mlkem768.generateKeyPair();
+    }
+
+    public mlkem768Decapsulate(secretKey: Uint8Array, ciphertext: Uint8Array): Uint8Array {
+        return this.mlkem768.decapsulate(secretKey, ciphertext);
+    }
+
+    public x25519MLKEM768SharedSecret(
+        x25519SecretKey: Uint8Array,
+        x25519PeerPublicKey: Uint8Array,
+        mlkemSecretKey: Uint8Array,
+        mlkemCiphertext: Uint8Array,
+    ): Uint8Array {
+        // draft-ietf-tls-ecdhe-mlkem: ML-KEM shared secret || X25519 shared
+        // secret (post-quantum first), fed to the key schedule as one 64-byte
+        // secret. Order verified against OpenSSL's X25519MLKEM768 peer.
+        const postQuantum = this.mlkem768.decapsulate(mlkemSecretKey, mlkemCiphertext);
+        const classical = this.x25519.sharedSecret(x25519SecretKey, x25519PeerPublicKey);
+        const hybrid = new Uint8Array(classical.length + postQuantum.length);
+        hybrid.set(postQuantum, 0);
+        hybrid.set(classical, postQuantum.length);
+        return hybrid;
     }
 
     public verifySignature(
