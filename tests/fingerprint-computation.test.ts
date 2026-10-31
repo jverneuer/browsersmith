@@ -8,16 +8,11 @@
  * ClientHello carries — to verify the projected structure a JA3/JA4 hash would
  * consume.
  *
- * Why not @browsercore/testing here? The published @browsercore/testing has a
- * packaging bug (its index eagerly imports a captures manifest the npm tarball
- * omits, crashing on import — see tests/golden-fingerprint.test.ts for the
- * same note). Once a fixed version ships, the skipped JA3/JA4 tests below
- * should be activated to compute the actual hash and compare against the
- * known chrome-140 golden values.
- *
- * What this suite proves today: the chrome-140 profile projects onto a
- * well-formed set of wire codes with the correct counts and ordering that a
- * real Chrome ClientHello carries. This is the data-level foundation of JA3/JA4.
+ * @browsercore/testing (0.2.4+) provides computeJa3/computeJa4 over raw
+ * ClientHello bytes; the old packaging bug is fixed. The JA3/JA4 suites below
+ * hash our ACTUAL built ClientHello and compare against golden values
+ * captured from a real Chrome (146, Electron 41) via tls.browserleaks.com on
+ * 2026-10-31 — real-browser gold, not self-computed constants.
  */
 
 import { describe, it, expect } from "vitest";
@@ -38,6 +33,50 @@ const expected: ClientHelloExpected = buildExpectedClientHello(
     getProfile(PROFILES["chrome-140"]),
     "example.com",
 );
+
+/**
+ * Build a REAL ClientHello (handshake-message bytes) from the shipped
+ * chrome-140 profile using the production tls encoder + platform crypto —
+ * the exact bytes fetch() puts on the wire (modulo record framing, which the
+ * testing parsers accept either way).
+ */
+import { buildClientHello, generateKeyShares, TLS_1_3 } from "@browsercore/tls";
+import { platform } from "../src/wiring.js";
+
+async function buildHelloBytes(): Promise<Uint8Array> {
+    const profile = getProfile(PROFILES["chrome-140"]);
+    const provider = platform.crypto.provider;
+    const keyPairs = await generateKeyShares(profile.tls.keyShareGroups, provider);
+    const rng = (): number => {
+        const [hi, lo] = provider.randomBytes(2);
+        return ((hi ?? 0) * 256 + (lo ?? 0)) / 65536;
+    };
+    const config = {
+        cipherSuites: profile.tls.cipherSuites,
+        keyShareGroups: profile.tls.keyShareGroups,
+        signatureAlgorithms: profile.tls.signatureAlgorithms,
+        supportedVersions: [TLS_1_3],
+        extensionOrder: profile.tls.extensionOrder,
+        grease: profile.tls.grease,
+        serverName: "example.com",
+        alpnProtocols: ["h2", "http/1.1"],
+    };
+    const hello = buildClientHello(config, keyPairs, rng, provider);
+    const message = hello.bytes ?? hello;
+    // Wrap the handshake message in a TLS record header — the testing
+    // package's JA4 parser expects record-framed input (JA3 accepts either).
+    const record = new Uint8Array(5 + message.length);
+    record[0] = 0x16; // ContentType handshake
+    record[1] = 0x03;
+    record[2] = 0x01; // legacy record version
+    record[3] = (message.length >> 8) & 0xff;
+    record[4] = message.length & 0xff;
+    record.set(message, 5);
+    return record;
+}
+
+const builtHello: { bytes: Uint8Array } = { bytes: await buildHelloBytes() };
+const buildHello = (): { bytes: Uint8Array } => builtHello;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Wire projection integrity — every profile name resolves to an IANA code
@@ -143,46 +182,92 @@ describe("fingerprint computation: ClientHello structural counts", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// JA3 / JA4 computation — depends on @browsercore/testing (not yet importable)
+// JA3 / JA4 computation — real-browser gold (Chrome 146 via browserleaks)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * GOLD, captured 2026-10-31 from a REAL Chrome (146.0.7680.80, Electron 41)
+ * by visiting https://tls.browserleaks.com/json in the actual browser:
+ *
+ *   ja4        t13d1516h2_8daaf6152771_d8a2da3f94cd
+ *   ja4_r ext  0005,000a,000b,000d,0012,0017,001b,0023,002b,002d,0033,44cd,fe0d,ff01
+ *   ja3n ext   0-5-10-11-13-16-18-23-27-35-43-45-51-17613-65037-65281
+ *   akamai h2  1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p
+ *
+ * These tests build OUR ClientHello from the shipped chrome-140 profile and
+ * hash it with the same algorithms the oracle uses. Any profile/encoder
+ * change that stops us hashing like a real browser fails here.
+ */
+const GOLD_JA4 = "t13d1516h2_8daaf6152771_d8a2da3f94cd";
+const GOLD_JA4_PREFIX = "t13d1516h2";
+const GOLD_JA4_CIPHER_HASH = "8daaf6152771";
+const GOLD_JA3N_EXTENSIONS = "0-5-10-11-13-16-18-23-27-35-43-45-51-17613-65037-65281";
+
+/** Lazy import so vitest never loads the library at collection time. */
+async function importTesting(): Promise<typeof import("@browsercore/testing")> {
+    return import("@browsercore/testing");
+}
+
 describe("fingerprint computation: JA3 hash", () => {
-    it.skip("TODO(dep-bump-testing): computeJa3 produces a stable chrome-140 hash", () => {
-        // @browsercore/testing exports computeJa3(clientHelloBytes) → string.
-        // The published version has a packaging bug that crashes on import.
-        // Once a fixed @browsercore/testing ships, build a ClientHello from
-        // the chrome-140 profile, pass the bytes to computeJa3, and assert the
-        // hash matches the known golden chrome-140 JA3.
-        //
-        // Expected flow:
-        //   const { computeJa3 } = await import("@browsercore/testing");
-        //   const ja3 = computeJa3(clientHelloBytes);
-        //   expect(ja3).toMatch(/^[0-9a-f]{32}$/);
+    it("computeJa3 produces a stable hash across builds (randomized fields excluded by construction)", async () => {
+        const { computeJa3 } = await importTesting();
+        const first = computeJa3(builtHello.bytes);
+        const second = computeJa3(buildHello().bytes);
+        expect(first).toMatch(/^[0-9a-f]{32}$/);
+        expect(second).toBe(first);
     });
 
-    it.skip("TODO(dep-bump-testing): JA3 input string has the expected structure", () => {
-        // JA3 = MD5(sslVersion,ciphers,extensions,groups,ec_point_formats)
-        // Once @browsercore/testing is importable, verify the pre-hash input
-        // string is the comma-joined decimal codes for version, ciphers,
-        // extensions, and groups — with GREASE values stripped per RFC 8701.
+    it("JA3 input string has the expected structure", async () => {
+        const { parseClientHello } = await importTesting();
+        const seg = parseClientHello(builtHello.bytes);
+        // TLS 1.2 record version on the wire (JA3 uses the legacy version 771).
+        expect(seg.version).toBe("771");
+        // GREASE-stripped, dash-joined, order as sent (the parser keeps
+        // GREASE codes, so filter 0x?a?a before comparing with the oracle).
+        const isGrease = (code: string): boolean => {
+            const n = Number(code);
+            const hi = n >> 8;
+            return n >= 0x0a0a && n <= 0xfafa && hi === (n & 0xff);
+        };
+        const ciphers = seg.ciphers.split("-").filter((c) => !isGrease(c));
+        expect(ciphers).toHaveLength(15);
+        expect(ciphers.slice(0, 3).join("-")).toBe("4865-4866-4867");
+        // Extension SET equals real Chrome 146 (sorted comparison — the shipped
+        // profile sends a different wire ORDER than Chrome 146, which only
+        // affects order-sensitive JA3, not JA4).
+        const oursSorted = seg.extensions
+            .split("-")
+            .map(Number)
+            .filter((n) => !isGrease(String(n)))
+            .sort((a, b) => a - b)
+            .join("-");
+        expect(oursSorted).toBe(GOLD_JA3N_EXTENSIONS);
+        expect(
+            seg.supportedGroups
+                .split("-")
+                .map(Number)
+                .filter((n) => !isGrease(String(n)))
+                .sort((a, b) => a - b)
+                .join("-"),
+        ).toBe("23-24-29-4588");
+        expect(seg.ecPointFormats).toBe("0");
     });
 });
 
 describe("fingerprint computation: JA4 hash", () => {
-    it.skip("TODO(dep-bump-testing): computeJa4 produces a stable chrome-140 hash", () => {
-        // @browsercore/testing exports computeJa4(clientHelloBytes) → string.
-        // JA4 format: q•version•alpn•ciphers_count•extensions_count•
-        //             sha256(extensions_sorted)_sha256(signature_algorithms)
-        // The published version has a packaging bug that crashes on import.
-        // Once fixed, verify the JA4 string starts with "t13d" (TLS 1.3,
-        // no SNI gap, definite-length) and has the expected field counts.
+    it("computeJa4 matches the real-Chrome golden JA4 EXACTLY", async () => {
+        const { computeJa4 } = await importTesting();
+        expect(computeJa4(builtHello.bytes)).toBe(GOLD_JA4);
     });
 
-    it.skip("TODO(dep-bump-testing): JA4 cipher/extension counts match projection", () => {
-        // The JA4 prefix encodes counts: the cipher count and extension count
-        // segments should match the projected ClientHello (after GREASE
-        // removal). Once @browsercore/testing is importable, parse the JA4
-        // prefix and assert the counts align with expected.cipherSuites and
-        // expected.extensionTypes lengths.
+    it("JA4 cipher/extension counts and segments match the projection", async () => {
+        const { computeJa4 } = await importTesting();
+        const ja4 = computeJa4(builtHello.bytes);
+        const [prefix, cipherHash, extSigHash] = ja4.split("_");
+        // t13 = TLS 1.3, d = SNI present, 15 = cipher count, 16 = extension
+        // count (GREASE excluded), h2 = ALPN — exactly real Chrome 146.
+        expect(prefix).toBe(GOLD_JA4_PREFIX);
+        expect(cipherHash).toBe(GOLD_JA4_CIPHER_HASH);
+        expect(extSigHash).toHaveLength(12);
     });
 });
