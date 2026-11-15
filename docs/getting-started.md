@@ -96,6 +96,7 @@ browsersmith re-exports a small typed error hierarchy from `@browsercore/fetch`:
 import {
   fetch,
   PROFILES,
+  platform,
   FetchError,
   FetchTimeoutError,
   RedirectError,
@@ -106,7 +107,7 @@ try {
   const res = await fetch("https://example.com", {
     profile: PROFILES["chrome-140"],
     timeoutMs: 5_000,
-  });
+  }, platform);
   console.log(res.status);
 } catch (err) {
   if (err instanceof FetchTimeoutError) {

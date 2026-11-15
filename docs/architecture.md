@@ -111,7 +111,7 @@ Mark this as experimental and unstable — the API will change. See [examples.md
 
 ## Data flow of a single `fetch()` call
 
-What happens when you call `await fetch(url, { profile: PROFILES["chrome-140"] })`:
+What happens when you call `await fetch(url, { profile: PROFILES["chrome-140"] }, platform)`:
 
 1. **Resolve the profile** via `getProfile("chrome-140")` — returns `{ tls, http1, http2 }` config bundles.
 2. **Open a TCP `Transport`** to the resolved host:port via `@browsercore/transport`.

@@ -4,10 +4,10 @@ Copy-pasteable recipes for the common cases. Every snippet is a self-contained T
 
 ## Basic GET
 
-The simplest case — a one-shot `fetch()` with the `chrome-140` profile, reading the body as text. Use this for ad-hoc requests where you don't need connection reuse.
+The simplest case — a one-shot `fetch()` with the `chrome-140` profile, reading the body as text. Use this for ad-hoc requests where you don't need connection reuse. The `platform` argument is required — without it the client throws (no fallback adapter provider).
 
 ```typescript
-import { fetch, PROFILES } from "browsersmith";
+import { fetch, platform, PROFILES } from "browsersmith";
 
 const res = await fetch("https://example.com", {
   profile: PROFILES["chrome-140"],
@@ -16,7 +16,7 @@ const res = await fetch("https://example.com", {
     accept: "text/html,application/xhtml+xml,*/*;q=0.8",
     "accept-language": "en-US,en;q=0.9",
   },
-});
+}, platform);
 
 console.log(res.status, res.statusText); // 200 OK
 console.log(res.url);                     // final URL after redirects
@@ -33,9 +33,9 @@ console.log(html.slice(0, 120));
 Use `createClient()` for stateful work — it pools connections per origin. Note that browsersmith does NOT auto-set `Content-Type` from the body shape (browser fetch does); you must set it explicitly.
 
 ```typescript
-import { createClient, PROFILES } from "browsersmith";
+import { createClient, platform, PROFILES } from "browsersmith";
 
-const client = createClient({ profile: PROFILES["chrome-140"] });
+const client = createClient({ profile: PROFILES["chrome-140"], platform });
 
 const res = await client.fetch("https://httpbin.example.com/post", {
   method: "POST",
@@ -63,6 +63,7 @@ import {
   createCookieJar,
   saveJar,
   loadJar,
+  platform,
   PROFILES,
 } from "browsersmith";
 
@@ -70,6 +71,7 @@ const jar = createCookieJar();
 const client = createClient({
   profile: PROFILES["chrome-140"],
   cookieJar: jar,
+  platform,
 });
 
 // First request: server sets a session cookie via Set-Cookie.
@@ -90,6 +92,7 @@ const restored = await loadJar("./session.json");
 const resumed = createClient({
   profile: PROFILES["chrome-140"],
   cookieJar: restored,
+  platform,
 });
 ```
 
@@ -181,6 +184,7 @@ Register a `BrowserProfile` for a browser browsersmith doesn't ship. Capture the
 ```typescript
 import {
   fetch,
+  platform,
   registerProfile,
   type BrowserProfile,
   type ProfileId,
@@ -219,7 +223,7 @@ const safari18: BrowserProfile = {
 
 registerProfile(safari18);
 
-const res = await fetch("https://example.com", { profile: "safari-18" });
+const res = await fetch("https://example.com", { profile: "safari-18" }, platform);
 console.log(res.status, (await res.text()).slice(0, 80));
 ```
 
@@ -230,7 +234,7 @@ console.log(res.status, (await res.text()).slice(0, 80));
 The `Transport` interface is the seam: `read()`, `write(buf)`, `close()`. The default is TCP via `@browsercore/transport`'s `connect({ host, port })`, but anything with that shape plugs in through `createClient`'s `transportFactory` option. A logging wrapper is the simplest illustration — wrap the default transport and tee every byte to a callback without changing semantics:
 
 ```typescript
-import { createClient, PROFILES } from "browsersmith";
+import { createClient, platform, PROFILES } from "browsersmith";
 import { connect } from "@browsercore/transport";
 import type { Transport } from "@browsercore/transport";
 
@@ -256,6 +260,7 @@ function loggingTransport(
 
 const client = createClient({
   profile: PROFILES["chrome-140"],
+  platform,
   transportFactory: (host, port) =>
     loggingTransport(connect({ host, port }), (dir, buf) =>
       console.log(`${dir} ${buf.length} bytes`),
@@ -274,11 +279,11 @@ await client.close();
 `text()`, `json()`, and `body()` are the three ways to consume a response — mutually exclusive on a single response (call `clone()` first to read two ways).
 
 ```typescript
-import { fetch, PROFILES } from "browsersmith";
+import { fetch, platform, PROFILES } from "browsersmith";
 
 const res = await fetch("https://example.com/large.html", {
   profile: PROFILES["chrome-140"],
-});
+}, platform);
 
 const text = await res.text();
 console.log("body chars:", text.length);
@@ -302,6 +307,7 @@ import {
   FetchTimeoutError,
   RedirectError,
   ProtocolError,
+  platform,
   PROFILES,
 } from "browsersmith";
 
@@ -311,7 +317,7 @@ async function fetchWithRetry(url: string, attempts = 3): Promise<void> {
       const res = await fetch(url, {
         profile: PROFILES["chrome-140"],
         timeoutMs: 5_000,
-      });
+      }, platform);
       console.log(res.status, (await res.text()).slice(0, 60));
       return;
     } catch (err) {
@@ -337,11 +343,12 @@ async function fetchWithRetry(url: string, attempts = 3): Promise<void> {
 }
 ```
 
-Order matters: `FetchError` is the base class, so put narrower subclasses first. `FetchTimeoutError` does not extend `FetchError` (it carries `timeoutMs`, not `url`) — give it its own branch. See [getting-started.md](./getting-started.md#errors-and-timeouts) for the full hierarchy.
+Order matters: `FetchError` is the base class, so put narrower subclasses first. `FetchTimeoutError` extends `FetchError` (it adds `timeoutMs` on top of the base's `url` / `kind` / `cause`), so a bare `instanceof FetchError` also catches timeouts — branch on the subclass first when you want to retry them. See [getting-started.md](./getting-started.md#errors-and-timeouts) for the full hierarchy.
 
 ## Sources
 
 - `examples/basic-fetch.ts`, `examples/crawl-sitemap.ts`, `examples/http1-vs-http2.ts` — canonical recipe sources lifted and adapted.
+- `examples/simple-crawler.ts` — BFS static-site crawler (walks same-origin links, extracts titles, polite delay). Run: `npm run example examples/simple-crawler.ts <startUrl> [maxDepth] [delayMs]`.
 - `src/index.ts` — public API surface (re-export barrel): `fetch`, `createClient`, `crawl`, `PROFILES`, `createCookieJar` / `saveJar` / `loadJar`, `registerProfile`, `connectQuic` / `connectHttp3`, error classes.
 - `src/crawl.ts` — `CrawlOptions` (profile, cookieJar, fetchOptions, delayMs, concurrency, timeoutMs, transportFactory, http3) + `CrawlResult` ({ url, ok, status?, response?, http3Response?, error? }). Returns `Promise<CrawlResult[]>`.
 - `@browsercore/fetch` — `FetchResponse` (`body(): Promise<Uint8Array>`, `text()`, `json()`, `clone()`), `FetchClient` (`fetch()`, `close()`), `createClient()` (synchronous), `FetchError` / `FetchTimeoutError` / `RedirectError` / `ProtocolError`.

@@ -17,74 +17,76 @@ browsercore (npm: `browsersmith`) is a TypeScript HTTP client that impersonates 
 - Sites using Cloudflare Turnstile / JS challenges / CAPTCHAs
 - Tasks needing screenshots, user interaction, or visual inspection
 - Sites behind login walls requiring browser-based auth flows
-- WebSocket or HTTP/3 connections (HTTP/3 not yet implemented)
+- WebSocket connections (not implemented)
+- Production HTTP/3 — it exists only as an experimental opt-in via `crawl({ http3: factory })` with a user-supplied UDP `DatagramTransport` (browsersmith wires no default UDP transport)
 - WebGL/Canvas/Font fingerprinting (browsercore does not touch these)
 
 ## Quick start
 
 ```ts
-import { fetch, PROFILES } from "browsersmith";
+import { fetch, platform, PROFILES } from "browsersmith";
 
-// One-shot request with Chrome 140 fingerprint
+// One-shot request with Chrome 140 fingerprint.
+// The 3rd argument (platform) is required — without it the client throws
+// (it has no fallback event/adapter provider).
 const res = await fetch("https://example.com", {
-  profile: PROFILES.CHROME_140,
-});
+  profile: PROFILES["chrome-140"],
+}, platform);
 const html = await res.text();
 
 // Reusable client with cookie persistence
-import { createClient, createCookieJar, loadJar } from "browsersmith";
+import { createClient, loadJar, platform, PROFILES, saveJar } from "browsersmith";
 
-const cookies = await loadJar("./cookies.json");
-const client = createClient({ profile: PROFILES.FIREFOX_128, cookies });
+const jar = await loadJar("./cookies.json");
+const client = createClient({
+  profile: PROFILES["firefox-128"],
+  cookieJar: jar,
+  platform,
+});
 
 const page1 = await client.fetch("https://shop.example.com/cart");
 const page2 = await client.fetch("https://shop.example.com/checkout"); // sends cookies
 
 await client.close();
-await cookies.saveJar("./cookies.json");
+await saveJar(jar, "./cookies.json");
 ```
 
 ## Core API
 
 ### fetch() — one-shot request
 ```ts
-fetch(url: string, options?: FetchOptions): Promise<FetchResponse>
+fetch(url: string, options?: FetchOptions, platform?: Platform): Promise<FetchResponse>
 ```
-Options: `profile`, `headers`, `method`, `body`, `timeout`, `followRedirects`, `maxRedirects`, `signal` (AbortSignal).
+Options: `profile`, `headers`, `method`, `body`, `timeoutMs`, `followRedirects`, `maxRedirects`, `cookieJar`, `signal` (AbortSignal). The 3rd `platform` argument (exported by browsersmith) is required in practice — without it the client throws (no fallback adapter provider). Equivalent alternative: build a client with `createClient({ platform })`.
 
 ### createClient() — persistent connection pool
 ```ts
-createClient(options?: ClientOptions): Client
+createClient(options?: FetchClientOptions): FetchClient
 ```
-Returns a `Client` with `.fetch()`, `.close()`. Reuses connections, applies cookies, handles cookies automatically.
+Returns a `FetchClient` with `.fetch()`, `.close()`. Pass `platform` in the options — required (or at minimum `events: platform.events`). Synchronous — do not await it. Reuses connections and replays cookies from `cookieJar` automatically.
 
 ### crawl() — multi-URL batch fetcher
 ```ts
-crawl(urls: string[], options?: CrawlOptions): AsyncGenerator<CrawlResult>
+crawl(urls: readonly string[], options?: CrawlOptions): Promise<CrawlResult[]>
 ```
-Options: `concurrency`, `delayMs`, `profile`, `cookies`, `onError`.
+Await the result array (NOT an async generator — no `for await`). Each `CrawlResult` is `{ url, ok, status?, response?, http3Response?, error? }`; a failed fetch becomes `{ ok: false, error }` and does not abort the crawl. Options: `concurrency`, `delayMs`, `profile`, `cookieJar`, `fetchOptions` (per-request options merged into every call), `timeoutMs`, plus experimental `http3` (a `(host, port) => DatagramTransport` factory you supply — one fresh QUIC connection per URL, no pooling). crawl() wires the platform internally; no `platform` argument needed.
 
 ### PROFILES — built-in browser fingerprints
 ```ts
-PROFILES.CHROME_140   // Chrome 140, Windows
-PROFILES.CHROME_128   // Chrome 128
-PROFILES.CHROME_120   // Chrome 120
-PROFILES.FIREFOX_128  // Firefox 128
-PROFILES.FIREFOX_120  // Firefox 120
-PROFILES.FIREFOX_135  // Firefox 135
-PROFILES.SAFARI_17    // Safari 17
-PROFILES.EDGE_128     // Edge 128
+PROFILES["chrome-140"]   // Chrome 140 — the recommended default
+PROFILES["firefox-128"]  // Firefox 128
 ```
+Keys are kebab-case strings — dotted access (`PROFILES.CHROME_140`) is a syntax error; use brackets. These two are the curated starters; the full registry (chrome-120/128, edge-120/128, firefox-120/135, safari-17/18) is reachable via `getProfile(id)` / `listProfiles()`.
 
 Each profile produces the full fingerprint triple: TLS ClientHello + HTTP/2 SETTINGS + HTTP/1.1 header order.
 
 ### Cookie jar
 ```ts
-createCookieJar()            // new empty jar
-loadJar(path)                // load from JSON file
-jar.saveJar(path)            // persist to JSON
-jar.getCookiesFor(url)       // matching cookies
-jar.setCookie(raw, fromUrl)  // set from Set-Cookie header
+createCookieJar()               // new empty jar
+loadJar(path)                   // load from JSON file (standalone function)
+saveJar(jar, path)              // persist to JSON (standalone function — not a jar method)
+jar.getCookies(url, context?)   // matching cookies
+jar.setCookie(raw, fromUrl)     // set from Set-Cookie header
 ```
 RFC 6265-compliant: domain matching, path matching, SameSite enforcement, secure/httpOnly flags, expiration, CHIPS.
 
@@ -94,15 +96,15 @@ All errors extend `FetchError` with a `kind` discriminator:
 
 | Error | kind | When |
 |---|---|---|
-| `FetchTimeoutError` | `"timeout"` | Request exceeds timeout |
-| `RedirectError` | `"redirect"` | Too many redirects or redirect loop |
-| `ProtocolError` | `"protocol"` | HTTP protocol violation |
-| `ConnectionError` | `"connection"` | TCP/TLS connection failed |
-| `TLSError` | `"tls"` | TLS handshake failed |
+| `FetchTimeoutError` | `"FetchTimeoutError"` | Request exceeds `timeoutMs` (carries `timeoutMs`) |
+| `RedirectError` | `"RedirectError"` | Too many redirects or redirect loop |
+| `ProtocolError` | `"ProtocolError"` | ALPN negotiation failure / protocol violation |
+
+There are no `ConnectionError` / `TLSError` exports — connection and TLS failures surface as base `FetchError`s with the lower-level error on `cause`.
 
 ```ts
 try {
-  await fetch("https://example.com", { profile: PROFILES.CHROME_140 });
+  await fetch("https://example.com", { profile: PROFILES["chrome-140"] }, platform);
 } catch (err) {
   if (err instanceof FetchTimeoutError) {
     // err.timeoutMs, err.url
@@ -117,20 +119,20 @@ try {
 
 ### Crawling a site
 ```ts
-import { crawl, PROFILES, createCookieJar } from "browsersmith";
+import { crawl, createCookieJar, PROFILES } from "browsersmith";
 
-const cookies = createCookieJar();
-for await (const result of crawl(urls, {
-  profile: PROFILES.CHROME_140,
-  cookies,
+const results = await crawl(urls, {
+  profile: PROFILES["chrome-140"],
+  cookieJar: createCookieJar(),
   concurrency: 5,
   delayMs: 200,
-})) {
+});
+for (const result of results) {
   if (result.ok) {
     console.log(result.url, result.status);
-    const text = await result.text();
+    const text = await result.response?.text();
   } else {
-    console.error(result.url, result.error.kind);
+    console.error(result.url, result.error);
   }
 }
 ```
@@ -138,7 +140,7 @@ for await (const result of crawl(urls, {
 ### Defeating bot detection
 ```ts
 // Rotate profiles to vary fingerprint
-const profiles = [PROFILES.CHROME_140, PROFILES.FIREFOX_128, PROFILES.SAFARI_17];
+const profiles = [PROFILES["chrome-140"], PROFILES["firefox-128"]];
 const profile = profiles[Math.floor(Math.random() * profiles.length)];
 
 const res = await fetch(targetUrl, {
@@ -147,15 +149,19 @@ const res = await fetch(targetUrl, {
     "Accept-Language": "en-US,en;q=0.9",
     // browsercore handles the rest of the header order automatically
   },
-});
+}, platform);
 ```
 
 ### Authenticated crawling
 ```ts
 // Step 1: Get cookies via browser automation (Playwright)
 // Step 2: Use browsercore for high-volume fetching
-const cookies = await loadJar("./auth-cookies.json");
-const client = createClient({ profile: PROFILES.CHROME_140, cookies });
+const jar = await loadJar("./auth-cookies.json");
+const client = createClient({
+  profile: PROFILES["chrome-140"],
+  cookieJar: jar,
+  platform,
+});
 
 // All requests now carry authentication cookies with browser-accurate fingerprints
 for (const productUrl of productUrls) {

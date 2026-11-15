@@ -60,11 +60,11 @@ When a target still blocks you, verify what browsersmith is actually sending. Th
 3. **`@browsercore/devtools`** — local inspector that renders the outgoing ClientHello + HTTP/2 frames in an HTML view. See [packages.md#browsercore-devtools](./packages.md#browsercore-devtools).
 
 ```typescript
-import { fetch, PROFILES } from "browsersmith";
+import { fetch, platform, PROFILES } from "browsersmith";
 
 const res = await fetch("https://tls.peet.ws/api/all", {
   profile: PROFILES["chrome-140"],
-});
+}, platform);
 const data = await res.json();
 console.log(data.tls.ja3);                 // match against canonical Chrome 140 JA3
 console.log(data.tls.ja4);                 // match against canonical Chrome 140 JA4

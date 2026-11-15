@@ -54,15 +54,15 @@ bot detector inspects is reproduced from a browser profile:
 ### Usage
 
 ```typescript
-import { fetch, createClient, PROFILES } from "browsersmith";
+import { fetch, createClient, platform, PROFILES } from "browsersmith";
 
 // One-shot fetch with a real Chrome 140 fingerprint:
 const response = await fetch("https://example.com", {
     profile: PROFILES["chrome-140"],
-});
+}, platform);
 
 // Reusable client for connection pooling + cookie jar:
-const client = createClient({ profile: PROFILES["chrome-140"] });
+const client = createClient({ profile: PROFILES["chrome-140"], platform });
 ```
 
 ### Available profiles

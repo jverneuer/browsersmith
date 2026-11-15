@@ -25,25 +25,25 @@ Three equivalent ways to pass a profile to `fetch()` (and to `createClient()`, w
 
 ```typescript
 // 1. The pinned const — recommended for reproducible crawls.
-import { fetch, PROFILES } from "browsersmith";
-await fetch(url, { profile: PROFILES["chrome-140"] });
+import { fetch, platform, PROFILES } from "browsersmith";
+await fetch(url, { profile: PROFILES["chrome-140"] }, platform);
 ```
 
 ```typescript
 // 2. Any registered profile via getProfile() — including the eight not pinned in PROFILES.
-import { fetch, getProfile, type ProfileId } from "browsersmith";
-await fetch(url, { profile: getProfile("chrome-128" as ProfileId) });
+import { fetch, getProfile, platform, type ProfileId } from "browsersmith";
+await fetch(url, { profile: getProfile("chrome-128" as ProfileId) }, platform);
 ```
 
 ```typescript
 // 3. A literal BrowserProfile object you construct yourself.
-import { fetch, type BrowserProfile } from "browsersmith";
+import { fetch, platform, type BrowserProfile } from "browsersmith";
 const custom: BrowserProfile = {
   tls:   { /* ciphers, extensionOrder, grease, keyShareGroups, signatureAlgorithms, alpn */ },
   http1: { /* headerOrder */ },
   http2: { /* settings, pseudoHeaderOrder, windowUpdate */ },
 };
-await fetch(url, { profile: custom });
+await fetch(url, { profile: custom }, platform);
 ```
 
 The three are interchangeable at the `fetch()` boundary — they all resolve to the same `BrowserProfile` shape handed to the transport stack. Pick the form that fits your code: the pinned const for stability, `getProfile()` for breadth across the registry, a literal object for full control (or for a profile you just registered).
@@ -64,16 +64,19 @@ getProfile("firefox-135");    // → { tls: {...}, http1: {...}, http2: {...} }
 For a browser not in the registry — a mobile build, a future Chrome, a specific Edge version — call `registerProfile()`:
 
 ```typescript
-import { registerProfile, fetch, getProfile, type BrowserProfile, type ProfileId } from "browsersmith";
+import { registerProfile, fetch, getProfile, platform, type BrowserProfile, type ProfileId } from "browsersmith";
 
 const chromeAndroid: BrowserProfile = {
+  id: "chrome-140-android" as ProfileId,
+  name: "chrome",
+  version: "140",
   tls:   { ciphers: [...], extensionOrder: [...], grease: true, keyShareGroups: [...], signatureAlgorithms: [...], alpn: ["h2", "http/1.1"] },
   http1: { headerOrder: ["host", "user-agent", "accept", "accept-encoding", "accept-language", ...] },
   http2: { settings: { HEADER_TABLE_SIZE: 65536, ENABLE_PUSH: 0, INITIAL_WINDOW_SIZE: 6291456, MAX_HEADER_LIST_SIZE: 262144 }, pseudoHeaderOrder: [":method", ":authority", ":scheme", ":path"], windowUpdate: 15663105 },
 };
 
-registerProfile("chrome-140-android" as ProfileId, chromeAndroid);
-await fetch(url, { profile: getProfile("chrome-140-android" as ProfileId) });
+registerProfile(chromeAndroid);
+await fetch(url, { profile: getProfile("chrome-140-android" as ProfileId) }, platform);
 ```
 
 The `TlsProfile` / `Http1Profile` / `Http2Profile` types are exported from browsersmith, so you get full type-checking on a custom profile. Load-bearing fields: for `TlsProfile`, the `extensionOrder` array and the `grease` boolean (see [architecture.md](./architecture.md#where-the-fingerprint-lives)); for `Http2Profile`, the `SETTINGS` values plus `pseudoHeaderOrder`; for `Http1Profile`, the header order.

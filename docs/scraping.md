@@ -11,11 +11,12 @@ Most bot-protected targets (Cloudflare, Akamai, DataDome, PerimeterX) fingerprin
 `createClient()` is **synchronous** — it returns a stateful client you call `.fetch()` on. One client per target site: it pools connections, shares a cookie jar across requests, and pins a single profile for the session.
 
 ```ts
-import { createClient, createCookieJar, PROFILES } from "browsersmith";
+import { createClient, createCookieJar, platform, PROFILES } from "browsersmith";
 
 const client = createClient({
   profile: PROFILES["chrome-140"],
   cookieJar: createCookieJar(),
+  platform,
 });
 
 const urls = ["https://example.com/", "https://example.com/docs", "https://example.com/pricing"];

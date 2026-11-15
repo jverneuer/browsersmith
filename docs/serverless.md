@@ -49,6 +49,7 @@ A complete handler that fetches a URL with the chrome-140 profile and returns st
 import {
   createClient,
   PROFILES,
+  platform,
   FetchError,
   FetchTimeoutError,
 } from "browsersmith";
@@ -57,6 +58,7 @@ import {
 // execution context. createClient() is synchronous, no await.
 const client = createClient({
   profile: PROFILES["chrome-140"],
+  platform,
   timeoutMs: 10_000, // shorter than the default 30s for Lambda
 });
 
@@ -101,10 +103,11 @@ Lambda execution contexts are reused across invocations — the "warm" path. Cre
 import {
   createClient,
   PROFILES,
+  platform,
   ProtocolError,
 } from "browsersmith";
 
-let client = createClient({ profile: PROFILES["chrome-140"] });
+let client = createClient({ profile: PROFILES["chrome-140"], platform });
 
 export async function handler(event: { url: string }) {
   try {
@@ -114,7 +117,7 @@ export async function handler(event: { url: string }) {
     if (err instanceof ProtocolError) {
       // The pool may have been killed by a freeze — re-create for
       // the next invocation, then surface this failure to Lambda.
-      client = createClient({ profile: PROFILES["chrome-140"] });
+      client = createClient({ profile: PROFILES["chrome-140"], platform });
     }
     throw err;
   }
