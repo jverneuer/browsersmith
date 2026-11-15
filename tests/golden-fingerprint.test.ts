@@ -89,11 +89,14 @@ describe("profile ↔ capture correspondence", () => {
         expect(profile.tls.supportedVersions).toContain("TLS 1.3");
     });
 
-    it("the chrome-140 profile declares x25519 + secp256r1 key-share groups", () => {
-        // Chrome's ClientHello always offers these two key-share groups.
+    it("the chrome-140 profile shares x25519 and advertises the NIST curves", () => {
+        // Chrome 131+ shares only X25519MLKEM768 + x25519 in key_share while
+        // still advertising secp256r1/secp384r1 in the supported_groups superset.
         const profile = getProfile("chrome-140" as never);
-        expect(profile.tls.keyShareGroups).toContain("x25519");
-        expect(profile.tls.keyShareGroups).toContain("secp256r1");
+        expect(profile.tls.keyShareGroups).toEqual(["X25519MLKEM768", "x25519"]);
+        expect(profile.tls.keyShareAdvertisedGroups).toContain("x25519");
+        expect(profile.tls.keyShareAdvertisedGroups).toContain("secp256r1");
+        expect(profile.tls.keyShareAdvertisedGroups).toContain("secp384r1");
     });
 
     it("the chrome-140 profile declares HTTP/2 SETTINGS matching a real Chrome", () => {

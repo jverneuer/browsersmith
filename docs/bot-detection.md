@@ -83,6 +83,7 @@ If any of the three diverges from the published Chrome 140 values, file an issue
 
 ## Sources
 
+- Worklog: 2026-11 fingerprint-fidelity wave — fetch 0.2.17, tls 0.4.14 (ClientHello byte fidelity), http2 0.2.11, profiles 0.2.4 (oracle-correct key-shares/settings: Chrome 131+ shares X25519MLKEM768 + x25519 only and sends exactly SETTINGS ids 1, 2, 4, 6).
 - Worklog: Task `1-repo-browsersmith` — `INTEGRATIONS.md` covers Cloudflare + DataDome bot-detection reference; `examples/defeat-bot-detection.ts` is the existing recipe source.
 - Worklog: Task `1-repo-tls` — `ClientHelloConfig.extensionOrder` is "the primary fingerprinting signal, so the order is load-bearing"; `grease` flag injects RFC 8701 GREASE (Chrome: true, Firefox: false).
 - Worklog: Task `1-repo-http2` — caller-supplied `initialSettings`; fixed pseudo-header order.
