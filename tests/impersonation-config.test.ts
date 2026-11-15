@@ -94,13 +94,22 @@ describe("impersonation config: TLS fingerprint (chrome-140)", () => {
         expect(profile.tls.supportedVersions).toContain("TLS 1.2");
     });
 
-    it("includes the post-quantum X25519MLKEM768 key-share group first", () => {
-        // Chrome 131+ leads key shares with the hybrid PQ group.
+    it("shares exactly X25519MLKEM768 + x25519 (Chrome 131+ PQ wire)", () => {
+        // Chrome 131+ leads key shares with the hybrid PQ group and keeps a
+        // single classical fallback (x25519) in the key_share extension.
         const groups = profile.tls.keyShareGroups;
-        expect(groups[0]).toBe("X25519MLKEM768");
-        expect(groups).toContain("x25519");
-        expect(groups).toContain("secp256r1");
-        expect(groups).toContain("secp384r1");
+        expect(groups).toEqual(["X25519MLKEM768", "x25519"]);
+    });
+
+    it("advertises the NIST curves in the supported_groups superset", () => {
+        // keyShareAdvertisedGroups is the supported_groups superset: Chrome
+        // still advertises P-256/P-384 alongside the groups it actually shares.
+        expect(profile.tls.keyShareAdvertisedGroups).toEqual([
+            "X25519MLKEM768",
+            "x25519",
+            "secp256r1",
+            "secp384r1",
+        ]);
     });
 
     it("does NOT carry the deprecated X25519Kyber768 group (replaced by MLKEM768)", () => {
@@ -152,13 +161,23 @@ describe("impersonation config: HTTP/2 fingerprint (chrome-140)", () => {
         expect(profile.http2.settings.initialWindowSize).toBe(6291456);
     });
 
-    it("sets max frame size to 16384 bytes (the default)", () => {
+    it("sets max frame size to 16384 bytes without advertising it in SETTINGS", () => {
+        // 16384 is the RFC 9113 default, so real Chrome omits SETTINGS id 5
+        // from its initial frame (gold Akamai h2: 1:65536;2:0;4:6291456;6:262144).
         expect(profile.http2.maxFrameSize).toBe(16384);
-        expect(profile.http2.settings.maxFrameSize).toBe(16384);
+        expect(profile.http2.settings.maxFrameSize).toBeUndefined();
     });
 
-    it("caps max concurrent streams at 100", () => {
-        expect(profile.http2.settings.maxConcurrentStreams).toBe(100);
+    it("omits max concurrent streams (Chrome sends exactly SETTINGS ids 1,2,4,6)", () => {
+        // The gold Chrome initial SETTINGS carries no MAX_CONCURRENT_STREAMS;
+        // advertising ids the browser omits would diverge the Akamai h2 hash.
+        expect(profile.http2.settings.maxConcurrentStreams).toBeUndefined();
+        expect(Object.keys(profile.http2.settings).sort()).toEqual([
+            "enablePush",
+            "headerTableSize",
+            "initialWindowSize",
+            "maxHeaderListSize",
+        ]);
     });
 
     it("caps max header list size at 262144 bytes (256 KiB)", () => {

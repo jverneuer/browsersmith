@@ -102,10 +102,18 @@ describe("fingerprint computation: profile → wire projection", () => {
     });
 
     it("projects key-share group names to their IANA named-group codes", () => {
-        expect(expected.keyShareGroups).toContain(NAMED_GROUP_CODES.X25519MLKEM768);
-        expect(expected.keyShareGroups).toContain(NAMED_GROUP_CODES.x25519);
-        expect(expected.keyShareGroups).toContain(NAMED_GROUP_CODES.secp256r1);
-        expect(expected.keyShareGroups).toContain(NAMED_GROUP_CODES.secp384r1);
+        // Chrome 131+ shares only the PQ hybrid + x25519 in key_share; the
+        // NIST curves project onto the advertised supported_groups superset.
+        expect(expected.keyShareGroups).toEqual([
+            NAMED_GROUP_CODES.X25519MLKEM768,
+            NAMED_GROUP_CODES.x25519,
+        ]);
+        expect(expected.keyShareAdvertisedGroups).toEqual([
+            NAMED_GROUP_CODES.X25519MLKEM768,
+            NAMED_GROUP_CODES.x25519,
+            NAMED_GROUP_CODES.secp256r1,
+            NAMED_GROUP_CODES.secp384r1,
+        ]);
     });
 
     it("places the post-quantum group code (0x11ec) first in the key-share list", () => {
@@ -168,8 +176,11 @@ describe("fingerprint computation: ClientHello structural counts", () => {
         expect(expected.extensionTypes).toContain(43);
     });
 
-    it("offers 4 key-share groups (1 PQ hybrid + 3 classical)", () => {
-        expect(expected.keyShareGroups).toHaveLength(4);
+    it("offers 2 key-share entries (1 PQ hybrid + 1 classical fallback)", () => {
+        // Chrome 131+ shares X25519MLKEM768 + x25519 only; the 4-group NIST
+        // superset lives in keyShareAdvertisedGroups (supported_groups).
+        expect(expected.keyShareGroups).toHaveLength(2);
+        expect(expected.keyShareAdvertisedGroups).toHaveLength(4);
     });
 
     it("offers 8 signature algorithms", () => {
@@ -242,6 +253,9 @@ describe("fingerprint computation: JA3 hash", () => {
             .sort((a, b) => a - b)
             .join("-");
         expect(oursSorted).toBe(GOLD_JA3N_EXTENSIONS);
+        // Chrome 131+ with the PQ hybrid enabled advertises exactly
+        // X25519MLKEM768 (4588) + x25519 (29) in supported_groups — the NIST
+        // curves are shared nowhere on the wire, only in the profile superset.
         expect(
             seg.supportedGroups
                 .split("-")
@@ -249,7 +263,7 @@ describe("fingerprint computation: JA3 hash", () => {
                 .filter((n) => !isGrease(String(n)))
                 .sort((a, b) => a - b)
                 .join("-"),
-        ).toBe("23-24-29-4588");
+        ).toBe("29-4588");
         expect(seg.ecPointFormats).toBe("0");
     });
 });
