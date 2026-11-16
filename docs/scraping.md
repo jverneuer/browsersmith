@@ -94,7 +94,7 @@ Second, use one jar per target domain when crawling multiple sites in one proces
 
 Higher concurrency = faster crawl, higher block risk. `crawl()` caps concurrency per host, so crawling 5 hosts at `concurrency: 3` means up to 15 in-flight requests total. For most sites, `concurrency: 2-5` with `delayMs: 200-1000` is the polite zone. Honor `Retry-After` on 429 / 503 — bump `delayMs` and back off.
 
-Pick one profile per target and stick with it for the session — rotating profiles per request looks like a bot evading detection ([bot-detection.md#patterns-to-avoid](./bot-detection.md#patterns-to-avoid)).
+Pick one profile per target and stick with it for the session — rotating profiles per request looks like a bot evading detection ([bot-detection.md#patterns-to-avoid](./bot-detection.md#patterns-to-avoid)). And when it's your IP rather than your fingerprint getting flagged, route requests through an HTTP CONNECT or SOCKS5 proxy with the `proxy` option — see [Proxy](../README.md#proxy).
 
 ## When to reach for a real browser
 

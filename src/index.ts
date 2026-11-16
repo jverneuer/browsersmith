@@ -22,6 +22,7 @@ export type {
 
 export {
     FetchError,
+    FetchProxyError,
     FetchTimeoutError,
     ProtocolError,
     RedirectError,
@@ -54,6 +55,27 @@ export type {
 // Cookie jar — persists cookies across requests (session continuity).
 export { createCookieJar, saveJar, loadJar } from "@browsercore/cookies";
 export type { CookieJar, CookieUrl, Cookie } from "@browsercore/cookies";
+
+// Proxy tunnels — HTTP CONNECT and SOCKS5/5h via @browsercore/proxy.
+// Consumers normally reach these through the `proxy` option: a client-level
+// default on createClient(), overridable per request on fetch(). The pieces
+// below are re-exported for building configs from proxy URLs (parseProxyUrl),
+// matching the typed error hierarchy without importing @browsercore/proxy,
+// and dialing tunnels outside the fetch path entirely (connectViaProxy).
+export { connectViaProxy, parseProxyUrl } from "@browsercore/proxy";
+export type {
+    ProxyConfig,
+    ProxyCredentials,
+    ProxyScheme,
+    ProxyTarget,
+} from "@browsercore/proxy";
+export {
+    ProxyAuthError,
+    ProxyConfigError,
+    ProxyError,
+    ProxyHandshakeError,
+    ProxyTunnelError,
+} from "@browsercore/proxy";
 
 // HTTP/3 over QUIC — QUIC transport + HTTP/3 framing + QPACK. Composes the
 // same fetch() seam as HTTP/1.1 and HTTP/2; not yet wired into the default

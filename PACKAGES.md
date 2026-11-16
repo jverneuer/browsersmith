@@ -18,6 +18,7 @@ published independently under the `@browsercore/*` scope and composed by the
 | package | role |
 | --- | --- |
 | [`@browsercore/tls`](https://github.com/jverneuer/browsercore-tls) | TLS 1.3 (with 1.2 fallback) client in pure TypeScript; browser-identical fingerprints. |
+| [`@browsercore/proxy`](https://github.com/jverneuer/browsercore-proxy) | HTTP CONNECT + SOCKS5/5h tunnels over any byte stream — what fetch()'s `proxy` option drives. |
 | [`@browsercore/quic`](https://github.com/jverneuer/browsercore-quic) | QUIC transport (RFC 9000): packet framing, streams, congestion — HTTP/3's base. |
 | [`@browsercore/http1`](https://github.com/jverneuer/browsercore-http1) | HTTP/1.1 client over any byte stream. |
 | [`@browsercore/http2`](https://github.com/jverneuer/browsercore-http2) | HTTP/2 client: framing, HPACK, stream multiplexing. |
@@ -27,7 +28,7 @@ published independently under the `@browsercore/*` scope and composed by the
 
 | package | role |
 | --- | --- |
-| [`@browsercore/fetch`](https://github.com/jverneuer/browsercore-fetch) | The developer-facing `fetch()` that composes the full stack (TLS + HTTP/1–3 + cookies + profiles). |
+| [`@browsercore/fetch`](https://github.com/jverneuer/browsercore-fetch) | The developer-facing `fetch()` that composes the full stack (TLS + HTTP/1–3 + cookies + profiles + proxy). |
 
 ## Support
 
@@ -47,7 +48,7 @@ published independently under the `@browsercore/*` scope and composed by the
 ## Dependency direction
 
 ```
-browsercore  ──►  fetch ──►  tls, http1, http2, http3, cookies, profiles, compression
+browsercore  ──►  fetch ──►  tls, http1, http2, http3, cookies, profiles, compression, proxy
                        │
                        └──►  http3 ──► quic
                                   └──► tls ──► crypto, transport
