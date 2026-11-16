@@ -246,3 +246,12 @@ Every `@browsercore/*` package enforces shared `CODING_STANDARDS.md` rules:
 - **Interfaces for domain objects, type aliases for states/constraints**
 - **Immutable data + `readonly`** everywhere
 - **Exhaustive switches** with `assertNever(x)` in the default branch
+
+## Contributing
+
+Contributions are very welcome — and not just code. A great bug report, a fingerprint reproduction, a golden capture or a docs fix moves the project forward just as much as a PR.
+
+- **New here?** Read the [contribution guide](CONTRIBUTING.md) — written to get you started in minutes.
+- **Questions?** Ask in [Discussions](https://github.com/jverneuer/browsersmith/discussions) — no wrong questions.
+- **First issue?** Browse [`good first issue`](https://github.com/jverneuer/browsersmith/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+- **Security?** Report privately via [SECURITY.md](SECURITY.md) — never in a public issue.
