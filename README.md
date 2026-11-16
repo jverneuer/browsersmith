@@ -79,6 +79,44 @@ into wire bytes. The test suites in `tests/impersonation-config.test.ts` and
 `tests/fingerprint-computation.test.ts` verify the profile → protocol config →
 ClientHello projection pipeline.
 
+## Proxy
+
+Route requests through an HTTP CONNECT or SOCKS5 proxy with the `proxy` option — a client-level default on `createClient()`, overridable per request. Proxied connections are pooled per origin+proxy pair, and the browser fingerprint travels through the tunnel unchanged.
+
+```typescript
+import { createClient, parseProxyUrl, platform, PROFILES } from "browsersmith";
+
+// Client-level default — every request from this client tunnels through it:
+const client = createClient({
+    profile: PROFILES["chrome-140"],
+    proxy: parseProxyUrl("socks5h://user:pass@proxy.example.com:1080"),
+    platform,
+});
+```
+
+```typescript
+// Per-request override — rotate to a different exit for a single call:
+const response = await client.fetch("https://example.com", {
+    proxy: parseProxyUrl("http://rotating-proxy.example.com:8080"),
+});
+```
+
+`socks5` resolves the target hostname **locally** and sends the IP; `socks5h` sends the hostname verbatim and lets the **proxy** resolve it — prefer `socks5h` when local DNS would leak or misresolve the target. Configs that don't come from a URL can be passed as object literals: `{ scheme: "http", host: "127.0.0.1", port: 8080 }`.
+
+Tunnel failures surface as `FetchProxyError` with the underlying proxy error kind preserved on `proxyKind` — auth failures, tunnel refusals, and handshake corruption are distinguishable without importing `@browsercore/proxy`:
+
+```typescript
+import { FetchProxyError } from "browsersmith";
+
+try {
+    await client.fetch("https://example.com");
+} catch (err) {
+    if (err instanceof FetchProxyError) {
+        console.error("proxy failed:", err.proxyKind, err.message); // e.g. "ProxyAuthError"
+    }
+}
+```
+
 ## Architecture
 
 ```
@@ -140,6 +178,7 @@ interface Platform {
 | **@browsercore/tls** | transport, contracts | TLS 1.3 (with 1.2 fallback), JA3/JA4 |
 | **@browsercore/http1** | transport, contracts | HTTP/1.1 client |
 | **@browsercore/http2** | transport, contracts | HTTP/2 framing, HPACK, stream multiplexing |
+| **@browsercore/proxy** | contracts | HTTP CONNECT + SOCKS5/5h proxy tunnels |
 | **@browsercore/profiles** | contracts | Browser fingerprint definitions |
 
 ### Layer 2 (composed protocols)
