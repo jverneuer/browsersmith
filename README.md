@@ -30,19 +30,25 @@ Node ≥ 26. Zero native dependencies: the whole stack is pure TypeScript.
 ## What it does
 
 ```typescript
-import { fetch, createClient, platform } from "browsersmith";
+import { fetch, createClient } from "browsersmith";
 
-// One-shot fetch with a real browser fingerprint:
-const response = await fetch("https://example.com", { profile: "chrome-140" }, platform);
+// Impersonation is on by default (chrome-140). Plain and simple:
+const response = await fetch("https://example.com");
 
 // Reusable client for connection pooling:
-const client = createClient({ profile: "chrome-140", events: platform.events });
+const client = createClient();
 try {
     const r1 = await client.fetch("https://example.com");
     const r2 = await client.fetch("https://example.com/api", { method: "POST" });
 } finally {
     await client.close();
 }
+
+// Want a specific browser? Pick it:
+const ff = createClient({ profile: "firefox-128" });
+
+// Want no impersonation at all? Opt out:
+const plain = createClient({ profile: "none" });
 ```
 
 
