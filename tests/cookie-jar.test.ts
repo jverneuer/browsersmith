@@ -5,7 +5,7 @@
  *   1. The @browsercore/cookies public API (jar, parse, match, persistence) —
  *      the RFC 6265 logic the crawler relies on for session continuity.
  *   2. The re-export surface of `src/index.ts` — importing `createCookieJar`,
- *      `saveJar`, `loadJar` (and typed errors) from `../src/index.js` is what
+ *      `serializeJar`, `deserializeJar` (and typed errors) from `../src/index.js` is what
  *      registers `index.ts` coverage, so every export is touched below.
  *
  * The jar logic lives in node_modules, but the *integration* (how crawl() and
@@ -16,11 +16,11 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import {
     createCookieJar,
-    saveJar,
-    loadJar,
+    serializeJar,
+    deserializeJar,
     CookieDomainError,
     CookieParseError,
 } from "../src/index.js";
@@ -233,7 +233,7 @@ describe("cookie jar: mutate", () => {
     });
 });
 
-describe("cookie jar: persistence (saveJar / loadJar)", () => {
+describe("cookie jar: persistence (serializeJar / deserializeJar)", () => {
     let dir: string;
     afterEach(() => {
         rmSync(dir, { recursive: true, force: true });
@@ -246,9 +246,10 @@ describe("cookie jar: persistence (saveJar / loadJar)", () => {
         const jar = createCookieJar();
         jar.setCookie("sid=abc123; Path=/; Secure", url("example.com"));
         jar.setCookie("lang=en; Path=/settings", url("example.com", "/settings"));
-        await saveJar(jar, path);
+        // cookies 0.2.1: persistence is sync string <-> jar; file IO is the caller's job.
+        writeFileSync(path, serializeJar(jar));
 
-        const loaded = await loadJar(path);
+        const loaded = deserializeJar(readFileSync(path, "utf8"));
         // sid is Secure → only matches over https; lang matches over http.
         expect(loaded.getCookies(url("example.com", "/", "https:"))).toHaveLength(1);
         expect(loaded.getCookies(url("example.com", "/settings", "https:"))).toHaveLength(2);

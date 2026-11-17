@@ -1,29 +1,26 @@
 /**
- * Unit tests for the NodeTime platform adapter.
+ * Unit tests for the NodeTime platform adapter (the canonical Clock).
  *
- * Tests the actual implementation against the Time contract:
- - clock.now() returns epoch milliseconds (number)
- * - clock.monotonic() returns a monotonic nanosecond timestamp (bigint)
- * - scheduler.delay() resolves after the requested duration
- * - scheduler.timeout() fires its signal after the delay
- * - scheduler.deadline() returns a composable AbortSignal
+ * Tests the actual implementation against the Time contract (contracts 0.2.6:
+ * `Time = Clock` — the former `{ clock, scheduler }` bundle shape is gone):
+ * - now() returns epoch milliseconds (number)
+ * - monotonic() returns a monotonic MILLISECOND timestamp (number)
+ * - sleep(ms) resolves after the requested duration
+ * - setTimeout/clearTimeout provide the timer surface
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { nodeTime } from "../../../../src/platform/time/node/time.js";
-import { Duration } from "@browsercore/contracts";
 
 describe("nodeTime", () => {
-    const { clock, scheduler } = nodeTime;
-
-    describe("clock.now()", () => {
+    describe("now()", () => {
         it("returns a number", () => {
-            const result = clock.now();
+            const result = nodeTime.now();
             expect(typeof result).toBe("number");
         });
 
         it("returns epoch milliseconds (positive, in a reasonable range)", () => {
-            const result = clock.now();
+            const result = nodeTime.now();
             expect(result).toBeGreaterThan(0);
             // Should be after 2020-01-01 and before 2100-01-01 in ms
             expect(result).toBeGreaterThan(1_577_836_800_000);
@@ -31,27 +28,26 @@ describe("nodeTime", () => {
         });
 
         it("returns a value that increases over time", () => {
-            const a = clock.now();
-            const b = clock.now();
+            const a = nodeTime.now();
+            const b = nodeTime.now();
             expect(b).toBeGreaterThanOrEqual(a);
         });
     });
 
-    describe("clock.monotonic()", () => {
-        it("returns a bigint", () => {
-            const result = clock.monotonic();
-            expect(typeof result).toBe("bigint");
+    describe("monotonic()", () => {
+        it("returns a number (milliseconds, per the canonical Clock unit contract)", () => {
+            const result = nodeTime.monotonic();
+            expect(typeof result).toBe("number");
         });
 
         it("returns a non-negative value", () => {
-            const result = clock.monotonic();
-            expect(result).toBeGreaterThanOrEqual(0n);
+            expect(nodeTime.monotonic()).toBeGreaterThanOrEqual(0);
         });
 
         it("is monotonic — does not decrease between calls", () => {
-            const samples: bigint[] = [];
+            const samples: number[] = [];
             for (let i = 0; i < 10; i++) {
-                samples.push(clock.monotonic());
+                samples.push(nodeTime.monotonic());
             }
             for (let i = 1; i < samples.length; i++) {
                 expect(samples[i]!).toBeGreaterThanOrEqual(samples[i - 1]!);
@@ -59,50 +55,50 @@ describe("nodeTime", () => {
         });
     });
 
-    describe("scheduler.delay()", () => {
+    describe("sleep()", () => {
         it("resolves after the requested duration", async () => {
             const start = Date.now();
-            await scheduler.delay(Duration.milliseconds(50));
+            await nodeTime.sleep(50);
             const elapsed = Date.now() - start;
             // Allow generous tolerance for CI scheduling jitter
             expect(elapsed).toBeGreaterThanOrEqual(40);
         });
 
         it("resolves (does not reject) for zero ms", async () => {
-            await expect(scheduler.delay(Duration.milliseconds(0))).resolves.toBeUndefined();
+            await expect(nodeTime.sleep(0)).resolves.toBeUndefined();
         });
     });
 
-    describe("scheduler.timeout()", () => {
-        it("returns an AbortSignal that fires after the delay", async () => {
-            const signal = scheduler.timeout(Duration.milliseconds(20));
-            expect(signal.aborted).toBe(false);
-
+    describe("setTimeout() / clearTimeout()", () => {
+        it("runs fn once after the requested duration", async () => {
+            let fired = 0;
+            nodeTime.setTimeout(20, () => fired++);
             await new Promise<void>((resolve) => {
-                signal.addEventListener("abort", () => resolve(), { once: true });
+                setTimeout(resolve, 80);
             });
-            expect(signal.aborted).toBe(true);
+            expect(fired).toBe(1);
         });
-    });
 
-    describe("scheduler.deadline()", () => {
-        it("returns a composable deadline with signal and expiresAt", () => {
-            const deadline = scheduler.deadline(Duration.seconds(5));
-            expect(deadline.signal).toBeInstanceOf(AbortSignal);
-            expect(typeof deadline.expiresAt).toBe("bigint");
-            expect(deadline.expiresAt).toBeGreaterThan(0n);
+        it("clearTimeout prevents fn from running", async () => {
+            let fired = 0;
+            const handle = nodeTime.setTimeout(20, () => fired++);
+            nodeTime.clearTimeout(handle);
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 80);
+            });
+            expect(fired).toBe(0);
         });
     });
 
     describe("integration: monotonic vs now", () => {
         it("both advance over a short delay", async () => {
-            const monotonicBefore = clock.monotonic();
-            const nowBefore = clock.now();
+            const monotonicBefore = nodeTime.monotonic();
+            const nowBefore = nodeTime.now();
 
-            await scheduler.delay(Duration.milliseconds(50));
+            await nodeTime.sleep(50);
 
-            const monotonicAfter = clock.monotonic();
-            const nowAfter = clock.now();
+            const monotonicAfter = nodeTime.monotonic();
+            const nowAfter = nodeTime.now();
 
             expect(monotonicAfter).toBeGreaterThan(monotonicBefore);
             expect(nowAfter).toBeGreaterThan(nowBefore);

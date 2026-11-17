@@ -15,10 +15,10 @@
  * exercise the genuine Node networking stack. UDP uses a real datagram socket
  * bound to an ephemeral port — deterministic on loopback, no CI flakeness.
  *
- * Architecture note for nodeUdp: the adapter owns its `node:dgram` socket at
- * module scope (singleton). Closing it tears down the underlying OS socket
- * with no reopen path — so these tests exercise close() exactly once, last, and
- * never close the underlying socket between assertions.
+ * Architecture note for nodeUdp: as of contracts 0.2.6 the adapter is a
+ * FACTORY (`connect()` binds a fresh ephemeral socket per connection) — the
+ * former module-scope singleton is gone, so every test connects its own
+ * transport and closes it when done.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -160,12 +160,13 @@ describe("nodeDns adapter", () => {
 // ---------------------------------------------------------------------------
 
 import { nodeUdp } from "../../../../src/platform/network/node/udp.js";
-import type { DatagramTransport, UdpAddress } from "@browsercore/contracts";
+import type { DatagramTransport } from "@browsercore/contracts";
 
 describe("nodeUdp adapter", () => {
     let peerSocket: DgramSocket;
     let peerPort: number;
     let adapterPort: number;
+    let udp: DatagramTransport;
 
     beforeEach(async () => {
         // A real UDP socket standing in for the remote peer — lets us exchange
@@ -175,27 +176,39 @@ describe("nodeUdp adapter", () => {
             peerSocket.bind(0, "127.0.0.1", resolveBind);
         });
         peerPort = (peerSocket.address() as AddressInfo).port;
+        // v2: the adapter is a factory — connect a fresh transport per test.
+        udp = await nodeUdp.connect({ address: "127.0.0.1", port: peerPort, family: 4 });
     });
 
     afterEach(async () => {
-        // Close only the peer socket. The adapter's internal socket is a
-        // module-scope singleton (see file header) — closing it would tear
-        // down the OS socket with no reopen path, breaking later tests.
+        await udp.close();
         await new Promise<void>((resolveClose) => {
             peerSocket.close(() => resolveClose());
         });
     });
 
-    it("exposes the DatagramTransport interface shape", () => {
-        expect(typeof nodeUdp.id).toBe("string");
-        expect(typeof nodeUdp.send).toBe("function");
-        expect(typeof nodeUdp.recv).toBe("function");
-        expect(typeof nodeUdp.close).toBe("function");
+    it("connect() yields the DatagramTransport interface shape", () => {
+        expect(typeof udp.id).toBe("string");
+        expect(typeof udp.send).toBe("function");
+        expect(typeof udp.recv).toBe("function");
+        expect(typeof udp.close).toBe("function");
     });
 
     it("has the expected id tag", () => {
-        expect(nodeUdp.id).toBe("node-udp");
+        expect(udp.id).toBe("node-udp");
     });
+
+    /** Send a probe so the peer learns the adapter's ephemeral port. */
+    async function probePeer(): Promise<void> {
+        await udp.send(new Uint8Array([0xca, 0xfe, 0xba, 0xbe]), {
+            address: "127.0.0.1",
+            port: peerPort,
+            family: 4,
+        });
+        adapterPort = await new Promise<number>((resolve) => {
+            peerSocket.once("message", (_msg, rinfo) => resolve(rinfo.port));
+        });
+    }
 
     it("send() delivers a datagram to a peer UDP socket", async () => {
         const payload = new Uint8Array([0xde, 0xad]);
@@ -203,7 +216,7 @@ describe("nodeUdp adapter", () => {
             peerSocket.once("message", (msg) => resolve(new Uint8Array(msg)));
         });
 
-        await nodeUdp.send(payload, {
+        await udp.send(payload, {
             address: "127.0.0.1",
             port: peerPort,
             family: 4,
@@ -214,27 +227,15 @@ describe("nodeUdp adapter", () => {
     });
 
     it("recv() resolves with a datagram sent from a peer", async () => {
-        // Step 1: Adapter sends a probe to the peer so the peer learns the
-        // adapter's ephemeral port (the adapter's socket is already bound at
-        // module scope, so its port is stable).
-        const probe = new Uint8Array([0xca, 0xfe, 0xba, 0xbe]);
-        await nodeUdp.send(probe, {
-            address: "127.0.0.1",
-            port: peerPort,
-            family: 4,
-        });
+        // Step 1: probe so the peer learns the adapter's ephemeral port.
+        await probePeer();
 
-        // Step 2: Peer receives the probe and captures the adapter's port.
-        adapterPort = await new Promise<number>((resolve) => {
-            peerSocket.once("message", (_msg, rinfo) => resolve(rinfo.port));
-        });
-
-        // Step 3: Arm recv() BEFORE the peer sends, so no datagram is missed.
-        const adapterRecv = nodeUdp.recv();
+        // Step 2: Arm recv() BEFORE the peer sends, so no datagram is missed.
+        const adapterRecv = udp.recv();
         const echoPayload = new Uint8Array([0x01, 0x02, 0x03]);
         peerSocket.send(echoPayload, adapterPort, "127.0.0.1");
 
-        // Step 4: Adapter's recv() resolves with the echoed datagram.
+        // Step 3: The transport resolves with the echoed datagram.
         const adapterResult = await adapterRecv;
         expect(adapterResult.data).toEqual(echoPayload);
         expect(adapterResult.from.address).toBe("127.0.0.1");
@@ -242,8 +243,9 @@ describe("nodeUdp adapter", () => {
     });
 
     it("recv() infers IPv4 family from an IPv4 address", async () => {
-        // Arm recv first, then send from a known IPv4 peer.
-        const adapterRecv = nodeUdp.recv();
+        // Learn the adapter's port for THIS transport, arm recv, echo from peer.
+        await probePeer();
+        const adapterRecv = udp.recv();
         const payload = new Uint8Array([0xab]);
         peerSocket.send(payload, adapterPort, "127.0.0.1");
 
