@@ -14,7 +14,7 @@ import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type UdpAddress } from "@browsercore/quic";
 import { type DatagramTransport } from "@browsercore/contracts";
 import { CHROME_140 } from "./profiles.js";
-import { platform } from "./wiring.js";
+import { defaultTlsHandshakeEngine, platform } from "./wiring.js";
 
 /**
  * Resolve an optional v2 platform bundle for crawl's full-stack needs.
@@ -31,7 +31,8 @@ function requireBundle<T>(bundle: T | undefined, path: string): T {
     return bundle;
 }
 
-/** Resolved-once views of the bundles crawl() needs (all required here). */
+/** Resolved-once views of the bundles crawl() needs directly (the fetch
+ *  client receives the whole `platform` and resolves the rest itself). */
 const stack = {
     get crypto() {
         return requireBundle(platform.crypto, "crypto");
@@ -41,9 +42,6 @@ const stack = {
     },
     get events() {
         return requireBundle(platform.events, "events");
-    },
-    get network() {
-        return requireBundle(platform.network, "network");
     },
 };
 
@@ -166,19 +164,22 @@ async function fetchHttp3(
     const peer: UdpAddress = { address: host, port, family: familyForHost(host) };
     const handshakeTimeoutMs = timeoutMs ?? 10_000;
 
-    // oxlint-disable-next-line typescript(no-unsafe-assignment)
+    // The TLS 1.3 handshake engine is injected EXPLICITLY (contracts
+    // `TlsHandshakeEngine`, backed by @browsercore/tls in wiring.ts) — quic's
+    // deprecated dynamic-import default never runs for browsersmith callers.
     const quic = await connectQuic({
-        transport: transport as Parameters<typeof connectQuic>[0]["transport"],
+        transport,
         peer,
         serverName: host,
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
+        handshakeEngine: defaultTlsHandshakeEngine(),
         clock: stack.time,
     });
 
     const http3 = await connectHttp3({
-        quic: quic as unknown as Parameters<typeof connectHttp3>[0]["quic"],
+        quic,
         settingsAckTimeoutMs: handshakeTimeoutMs,
         clock: stack.time,
         events: stack.events,
@@ -247,12 +248,13 @@ export async function crawl(
     // Assemble client options so absent optionals stay absent — under
     // exactOptionalPropertyTypes, `{ transportFactory: undefined }` is rejected
     // because the field's type is `(host, port) => ...` (no `undefined`).
+    // The lazy `platform` is passed whole (fetch's single decoupled injection
+    // seam): it resolves net/dns/events/crypto/compression from it — crypto
+    // included, which the real-TCP path requires for the TLS handshake.
     const clientOptions: { -readonly [K in keyof FetchClientOptions]: FetchClientOptions[K] } = {
         profile,
         cookieJar: jar,
-        net: requireBundle(stack.network.tcp, "network.tcp"),
-        dns: requireBundle(stack.network.dns, "network.dns"),
-        events: stack.events,
+        platform,
     };
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;

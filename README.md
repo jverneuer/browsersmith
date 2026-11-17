@@ -13,9 +13,11 @@ whose TLS ClientHello (JA3/JA4), HTTP/2 SETTINGS, and header ordering match
 Chrome or Firefox byte-for-byte, defeating bot-detection services.
 
 browsersmith is the **composition root** — the only package allowed `node:*`
-imports. It builds a single `Platform` object that threads runtime capabilities
-down through options, making every protocol package runtime-agnostic and
-independently swappable.
+imports. It assembles a single `Platform` object (lazily, on first use) that
+threads runtime capabilities down through options, making every protocol
+package runtime-agnostic and independently swappable. Edge consumers import
+[`browsersmith/core`](#platform--the-composition-root) instead and compose
+their own Platform.
 
 ## Use with Crawlee
 
@@ -170,33 +172,99 @@ transport   tls   http1   http2   http3   quic   fetch   crypto   compression
                            browsersmith (composition root — builds Platform)
 ```
 
-## Platform
+## Platform — the composition root
 
 The `Platform` object groups runtime capabilities **per-service**, then
 per-runtime. Adding a new runtime (Bun, Deno, Workers) means implementing
-each service's interfaces — no protocol package changes.
+each service's interfaces — no protocol package changes. Every bundle is
+OPTIONAL (contracts 0.2.6+): a platform carries exactly the capabilities its
+runtime has; consumers resolve the bundle they use and name it when missing.
 
 ```ts
 interface Platform {
-    readonly network: Network;         // tcp + dns + udp
-    readonly crypto: Crypto;           // provider (single randomness source)
-    readonly compression: Compression; // gzip/deflate/brotli sync shape
-    readonly events: EventProvider;    // EventTarget-backed emitter
-    readonly telemetry: Telemetry;     // logger + tracer + metrics
-    readonly time: Time;               // clock + scheduler (composable deadlines)
+    readonly network?: Network;         // tcp + dns + udp factory (each optional)
+    readonly crypto?: Crypto;           // provider (single randomness source)
+    readonly compression?: Compression; // gzip/deflate/brotli sync shape
+    readonly events?: EventProvider;    // EventTarget-backed emitter
+    readonly telemetry?: Telemetry;     // logger + tracer + metrics
+    readonly time?: Time;               // Time ≡ Clock — the canonical time contract
 }
 ```
+
+### The default platform is LAZY
+
+`import { platform } from "browsersmith"` works exactly as before — but the
+Platform is no longer assembled at module load. The export is a forwarding
+view with a getter per bundle over a memoized instance built on **first
+access** (the replaceability audit's module-load side-effect finding):
+importing the package performs zero adapter work, cold starts on
+Workers/edge don't pay for Node adapters they never touch, and bundlers can
+tree-shake the assembly (and the adapters behind it) when nothing reads it.
+The `nodeEventProvider` singleton is lazy the same way — no `EventEmitter`
+until the first call.
+
+### `browsersmith/core` — the runtime-free entry
+
+```ts
+import { fetch, createClient, PROFILES } from "browsersmith/core";
+```
+
+The `./core` subpath exports ONLY the platform-neutral surface — the `fetch()`
+composition, browser profiles, the cookie jar, and the `@browsercore/contracts`
+types (`Platform`, `Net`, `UdpSocketFactory`, `Clock`, …) an edge consumer
+composes against. Zero Node built-in imports (the release gate greps the built
+entry and requires zero hits), no platform adapters, no `crawl()`. Node
+consumers should use the main entry — `./core` exists for runtimes composing
+their own Platform.
+
+**Cloudflare Workers recipe** — `browsersmith/platform-workers` composition is
+simply `@browsercore/fetch` + `@browsercore/platform-workers` (install both;
+browsersmith cross-links, not re-exports, so the Node adapters never enter an
+edge bundle graph):
+
+```ts
+import { platformWorkers } from "@browsercore/platform-workers";
+import { createClient } from "@browsercore/fetch";
+
+const client = createClient({ profile: "chrome-140", platform: platformWorkers() });
+```
+
+### Injected TLS handshake engine (HTTP/3 path)
+
+`@browsercore/quic` consumes the contracts `TlsHandshakeEngine` interface —
+never `@browsercore/tls` directly (the no-hard-wires invariant). browsersmith
+supplies the implementation and passes it explicitly at every `connectQuic`
+call site, so quic's deprecated dynamic-import default never runs for
+browsersmith consumers:
+
+```ts
+import { connectQuic, createTlsHandshakeEngine } from "browsersmith";
+
+const quic = await connectQuic({
+    /* transport, peer, ids, timeouts … */
+    handshakeEngine: createTlsHandshakeEngine(), // @browsercore/tls, wrapped
+});
+```
+
+### UDP is a factory, not a socket
+
+`nodeUdp` implements `UdpSocketFactory`: `connect(address)` binds a FRESH
+ephemeral `node:dgram` socket (udp4/udp6 by address family) per call and
+returns a `DatagramTransport` view; `close()` releases that one socket. There
+is no module-scope socket and no import-time bind — two concurrent QUIC
+"connections" never share a receive queue, and a UDP-less runtime can omit
+the bundle entirely.
 
 ### Platform services (in `src/platform/`)
 
 | Service | Node adapter | Contract |
 |---------|-------------|----------|
-| **network** | `network/node/{net,dns,udp}.ts` | `Network { tcp, dns, udp }` |
+| **network** | `network/node/{net,dns,udp}.ts` | `Network { tcp, dns, udp: UdpSocketFactory }` |
 | **crypto** | `crypto/node/node-crypto-provider.ts` | `Crypto { provider }` |
 | **compression** | `compression/node/compression.ts` | `Compression` |
-| **events** | `events/node/event-provider.ts` | `EventProvider` |
+| **events** | `events/node/event-provider.ts` (lazy singleton) | `EventProvider` |
 | **telemetry** | `telemetry/noop/no-op-telemetry.ts` | `NoOpTelemetry` (default) |
-| **time** | `time/node/time.ts` | `Time { clock, scheduler }` |
+| **time** | `time/node/time.ts` | `Time ≡ Clock` (`now`/`monotonic`/`sleep`/`setTimeout`/`clearTimeout`) |
 
 ## Packages
 

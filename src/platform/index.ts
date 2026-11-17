@@ -39,6 +39,21 @@ import type {
 /** The Platform type — re-exported from @browsercore/contracts (single source of truth). */
 export type Platform = ContractPlatform;
 
+/**
+ * A Platform with EVERY bundle present — the shape {@link createPlatform}
+ * assembles (omitted options fall back to the Node defaults, so no bundle is
+ * ever absent from its result).
+ *
+ * Why not just `Platform`: contracts 0.2.6 made Platform bundles optional (a
+ * platform carries exactly what its runtime has), but this composition root
+ * always provisions all six. Naming that guarantee in the return type lets
+ * the lazy `platform` view in `wiring.ts` expose non-optional getters without
+ * lying to `exactOptionalPropertyTypes` — and consumers of the DEFAULT
+ * platform can skip the bundle-presence checks custom platforms require.
+ * `CompletePlatform` is assignable to `Platform` everywhere.
+ */
+export type CompletePlatform = Readonly<Required<Platform>>;
+
 /** Platform override options — re-exported from @browsercore/contracts. */
 export type PlatformOptions = ContractPlatformOptions;
 
@@ -61,7 +76,7 @@ export type PlatformOptions = ContractPlatformOptions;
  * const platform = createPlatform({ time: fakeClock });
  * ```
  */
-export function createPlatform(options?: PlatformOptions): Platform {
+export function createPlatform(options?: PlatformOptions): CompletePlatform {
     return {
         network: {
             tcp: options?.network?.tcp ?? nodeNet,
