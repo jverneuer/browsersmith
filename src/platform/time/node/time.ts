@@ -1,39 +1,25 @@
 /**
- * Node.js platform adapter for the {@link Time} contract.
+ * Node.js implementation of the {@link Time} contract (the canonical Clock).
  *
- * Wraps `Date.now()`, `process.hrtime.bigint()`, and `AbortSignal.timeout`
- * to satisfy the platform-agnostic Time interface. This is the canonical
- * time source for the entire stack; tests inject a fake clock for determinism.
- *
- * Structure matches `@browsercore/contracts` `Time { clock, scheduler }`:
- *   - `clock`     : wall time (Date.now) + monotonic (process.hrtime.bigint)
- *   - `scheduler` : delay, timeout, composable deadline via AbortSignal
+ * `now()` returns epoch ms (Date.now). `monotonic()` returns monotonic time
+ * in MILLISECONDS (process.hrtime.bigint scaled down) — for deltas only, per
+ * the canonical Clock's unit contract. `sleep`/`setTimeout`/`clearTimeout`
+ * route onto `node:timers` with unref'd sleeps: politeness delays must not
+ * pin the process open.
  */
 
-import { setTimeout as nodeDelay } from "node:timers/promises";
-import type { Time, Duration } from "./time-types.js";
+import type { Time } from "@browsercore/contracts";
 
-/**
- * Node.js implementation of the {@link Time} contract.
- *
- * `clock.now()` returns epoch ms (Date.now). `clock.monotonic()` returns
- * nanosecond monotonic time (process.hrtime.bigint) — for deltas only.
- * `scheduler` uses AbortSignal.timeout for composable cancellation.
- */
 export const nodeTime: Time = {
-    clock: {
-        now: () => Date.now(),
-        monotonic: () => process.hrtime.bigint(),
-    },
-    scheduler: {
-        delay: (d: Duration, signal?: AbortSignal) =>
-            nodeDelay(d.milliseconds, undefined, { signal, ref: false }),
-        timeout: (d: Duration) => AbortSignal.timeout(d.milliseconds),
-        deadline: (d: Duration) => ({
-            signal: AbortSignal.timeout(d.milliseconds),
-            expiresAt: process.hrtime.bigint() + BigInt(d.milliseconds) * 1_000_000n,
+    now: () => Date.now(),
+    monotonic: () => Number(process.hrtime.bigint() / 1_000_000n),
+    sleep: (ms) =>
+        new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, ms);
+            timer.unref();
         }),
+    setTimeout: (ms, fn) => setTimeout(fn, ms),
+    clearTimeout: (handle) => {
+        clearTimeout(handle as NodeJS.Timeout);
     },
 };
-
-
