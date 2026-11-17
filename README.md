@@ -16,6 +16,27 @@ imports. It builds a single `Platform` object that threads runtime capabilities
 down through options, making every protocol package runtime-agnostic and
 independently swappable.
 
+## Use with Crawlee
+
+Drop browsersmith into any Crawlee crawler and every request carries a
+browser-identical TLS/HTTP2 fingerprint plus per-request proxy rotation, with
+zero native dependencies — a drop-in next to `FetchHttpClient`:
+
+```ts
+import { CheerioCrawler } from "crawlee";
+import { BrowsersmithHttpClient } from "@browsercore/crawlee";
+
+const crawler = new CheerioCrawler({
+    httpClient: new BrowsersmithHttpClient(),
+});
+```
+
+Works with `CheerioCrawler`, `HttpCrawler`, `BasicCrawler`, and anything else
+built on `@crawlee/http-client`. Crawlee keeps the queue, retries, sessions,
+and autoscaling; browsersmith owns the wire. Full guide:
+[docs/crawlee.md](docs/crawlee.md) — package:
+[@browsercore/crawlee on npm](https://www.npmjs.com/package/@browsercore/crawlee).
+
 ## What it does
 
 ```typescript
@@ -50,6 +71,11 @@ bot detector inspects is reproduced from a browser profile:
   (sec-ch-ua, sec-fetch-*, accept-encoding) for each browser family.
 - **JA3/JA4 validation**: Built-in profile validation against golden captures
   via `buildExpectedClientHello` and `validateProfileAgainstCapture`.
+- **Cookie + header fidelity** (0.0.17 stack): `FetchResponse.getSetCookie()`
+  returns every `Set-Cookie` header verbatim on both HTTP/1.1 and HTTP/2
+  (multiple `Set-Cookie` lines are never collapsed), duplicate response headers
+  are preserved via `getHeaderValues()`, and HEAD/204/304 responses no longer
+  close pooled keep-alive connections.
 
 ### Usage
 
@@ -67,10 +93,20 @@ const client = createClient({ profile: PROFILES["chrome-140"], platform });
 
 ### Available profiles
 
+Pinned in the `PROFILES` const:
+
 | Profile | Browser | Post-quantum key share |
 |---------|---------|----------------------|
 | `chrome-140` | Chrome 140+ | X25519MLKEM768 |
 | `firefox-128` | Firefox 128+ | — |
+
+In the registry via `getProfile()` (see [docs/profiles.md](docs/profiles.md)):
+
+| Profile | Browser | Notes |
+|---------|---------|-------|
+| `safari-17` | Safari 17.x | wire-correct h2 SETTINGS since profiles 0.2.5 |
+| `safari-18` | Safari 18.x | wire-correct h2 SETTINGS since profiles 0.2.5 |
+| `chrome-120`, `chrome-128`, `firefox-120`, `firefox-135`, `edge-120`, `edge-128` | older Chrome/Firefox/Edge | |
 
 ### Verification
 
