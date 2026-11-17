@@ -56,6 +56,48 @@ export class NodeEventProvider implements EventProvider {
 }
 
 /**
- * Default Node.js event provider instance.
+ * Memoized default provider — constructed on first method call, never at
+ * import.
  */
-export const nodeEventProvider = new NodeEventProvider();
+let defaultProvider: NodeEventProvider | undefined;
+
+function defaultProviderInstance(): NodeEventProvider {
+    defaultProvider ??= new NodeEventProvider();
+    return defaultProvider;
+}
+
+/**
+ * Default Node.js event provider — a LAZY singleton.
+ *
+ * WHY not `export const nodeEventProvider = new NodeEventProvider()`: that
+ * constructed an `EventEmitter` at module load (the replaceability audit's
+ * module-load side-effect finding — same rationale as the lazy `platform`
+ * in `wiring.ts`). Each method below forwards to a `NodeEventProvider`
+ * built on the first CALL, so importing the module is free while
+ * `import { nodeEventProvider }` keeps working unchanged. Explicit typed
+ * forwarding (instead of a Proxy) keeps the surface exactly the
+ * {@link EventProvider} contract — no `any` at a trap boundary.
+ */
+export const nodeEventProvider: EventProvider = {
+    on: (event, listener) => {
+        defaultProviderInstance().on(event, listener);
+    },
+    once: (event, listener) => {
+        defaultProviderInstance().once(event, listener);
+    },
+    off: (event, listener) => {
+        defaultProviderInstance().off(event, listener);
+    },
+    removeListener: (event, listener) => {
+        defaultProviderInstance().removeListener(event, listener);
+    },
+    emit: (event, ...args) => {
+        return defaultProviderInstance().emit(event, ...args);
+    },
+    listenerCount: (event) => {
+        return defaultProviderInstance().listenerCount(event);
+    },
+    removeAllListeners: (event) => {
+        defaultProviderInstance().removeAllListeners(event);
+    },
+};

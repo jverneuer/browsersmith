@@ -43,16 +43,22 @@ published independently under the `@browsercore/*` scope and composed by the
 
 | package | role |
 | --- | --- |
-| **`browsersmith`** ([repo](https://github.com/jverneuer/browsersmith)) | *Batteries-included* one-install package that wires the stack above into a single browser-identical `fetch()`. It holds no protocol logic of its own — just `src/index.ts` (a configured `fetch`), `src/profiles.ts` (preset fingerprints), and `src/crawl.ts` (a higher-level crawl helper) — and depends on every `@browsercore/*` package above. |
+| **`browsersmith`** ([repo](https://github.com/jverneuer/browsersmith)) | *Batteries-included* one-install package that wires the stack above into a single browser-identical `fetch()`. It holds no protocol logic of its own — just `src/index.ts` (a configured `fetch` + the Node `Platform` composition root), `src/core.ts` (the `browsersmith/core` runtime-free entry for edge consumers), `src/profiles.ts` (preset fingerprints), and `src/crawl.ts` (a higher-level crawl helper) — and depends on every `@browsercore/*` package above. The default `Platform` is assembled lazily on first use (no module-load side effects), the TLS handshake engine is injected explicitly at every `connectQuic` call site, and UDP is a per-connection `UdpSocketFactory`. |
+
+## Edge composition
+
+| package | role |
+| --- | --- |
+| [`@browsercore/platform-workers`](https://github.com/jverneuer/browsercore-platform-workers) | Cloudflare Workers `Platform` adapter (pure-noble crypto, `cloudflare:sockets` shim). Compose it with `@browsercore/fetch` — or take `browsersmith/core` for the runtime-free re-export surface — to run the same browser-identical stack on Workers without the Node adapters. |
 
 ## Dependency direction
 
 ```
-browsercore  ──►  fetch ──►  tls, http1, http2, http3, cookies, profiles, compression, proxy
+browsersmith  ──►  fetch ──►  tls, http1, http2, http3, cookies, profiles, compression, proxy
                        │
                        └──►  http3 ──► quic
                                   └──► tls ──► crypto, transport
                                                        └──► crypto
 ```
 
-Install a single layer for a targeted use case, or install **`browsercore`** to get the whole stack behind one `fetch()`.
+Install a single layer for a targeted use case, or install **`browsersmith`** to get the whole stack behind one `fetch()` (Workers: `@browsercore/fetch` + `@browsercore/platform-workers`).

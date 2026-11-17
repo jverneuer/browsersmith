@@ -138,10 +138,16 @@ export { PROFILES } from "./profiles.js";
 export { crawl, type CrawlOptions, type CrawlResult } from "./crawl.js";
 
 // Platform composition root — the single seam for all runtime dependencies.
-// browsersmith is the ONLY package allowed node:* imports. The Platform is
-// built once in wiring.ts and threaded down through options objects.
-export { platform, createPlatform } from "./wiring.js";
-export type { Platform, PlatformOptions } from "./platform/index.js";
+// browsersmith is the ONLY package allowed node:* imports. The default
+// Platform is LAZY (assembled on first bundle access — see wiring.ts); tests
+// and custom runtimes build their own via createPlatform().
+export { platform, createPlatform, createTlsHandshakeEngine, defaultTlsHandshakeEngine } from "./wiring.js";
+export type { Platform, PlatformOptions, CompletePlatform } from "./platform/index.js";
+
+// TLS handshake engine injection — the @browsercore/tls-backed implementation
+// of the contracts `TlsHandshakeEngine`, passed explicitly at every connectQuic
+// call site (quic's deprecated dynamic default is dead code here).
+export type { TlsHandshakeEngine } from "@browsercore/contracts";
 
 // Platform adapters — Node.js implementations of the platform contracts.
 // These are the only files in the stack that import node:net / node:dns /
