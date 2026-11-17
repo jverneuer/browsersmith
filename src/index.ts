@@ -5,16 +5,24 @@
  * stack: browser-identical TLS + HTTP/2 fingerprints, cookie jar, redirect
  * handling, and content negotiation behind a single `fetch()` call.
  *
- * Most consumers only need {@link fetch} and {@link createClient}; pass a
- * browser profile (`"chrome-140"`, `"firefox-128"`, …) and the stack reproduces
- * the wire fingerprint a real browser would emit. See `examples/` for crawling,
+ * Most consumers only need {@link fetch} and {@link createClient}. Every
+ * client impersonates a real browser by default (chrome-140); pick another
+ * profile with `profile: "firefox-128"` (etc.), or pass `profile: "none"` for
+ * the bare, non-impersonated runtime stack. See `examples/` for crawling,
  * crawler-detection defeat, and protocol selection.
  *
  * @packageDocumentation
  */
 
 // The headline API: a fetch() that composes TLS + profile + HTTP/1.1|HTTP/2.
-export { fetch, createClient } from "@browsercore/fetch";
+export {
+    fetch,
+    createClient,
+    DEFAULT_PROFILE,
+    NO_IMPERSONATION,
+    resolveProfile,
+} from "./client.js";
+export type { ClientProfile, ClientInit, ClientRequestInit } from "./client.js";
 export type {
     FetchClient,
     FetchClientOptions,
