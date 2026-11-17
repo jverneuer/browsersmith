@@ -19,6 +19,33 @@ package runtime-agnostic and independently swappable. Edge consumers import
 [`browsersmith/core`](#platform--the-composition-root) instead and compose
 their own Platform.
 
+## Install
+
+```sh
+npm install browsersmith
+```
+
+Node ≥ 26. Zero native dependencies — the entire stack is pure TypeScript.
+
+## What it does
+
+```typescript
+import { fetch, createClient, platform } from "browsersmith";
+
+// One-shot fetch with a real browser fingerprint:
+const response = await fetch("https://example.com", { profile: "chrome-140" }, platform);
+
+// Reusable client for connection pooling:
+const client = createClient({ profile: "chrome-140", events: platform.events });
+try {
+    const r1 = await client.fetch("https://example.com");
+    const r2 = await client.fetch("https://example.com/api", { method: "POST" });
+} finally {
+    await client.close();
+}
+```
+
+
 ## Use with Crawlee
 
 Drop browsersmith into any Crawlee crawler and every request carries a
@@ -39,24 +66,6 @@ built on `@crawlee/http-client`. Crawlee keeps the queue, retries, sessions,
 and autoscaling; browsersmith owns the wire. Full guide:
 [docs/crawlee.md](docs/crawlee.md) — package:
 [@browsercore/crawlee on npm](https://www.npmjs.com/package/@browsercore/crawlee).
-
-## What it does
-
-```typescript
-import { fetch, createClient, platform } from "browsersmith";
-
-// One-shot fetch with a real browser fingerprint:
-const response = await fetch("https://example.com", { profile: "chrome-140" }, platform);
-
-// Reusable client for connection pooling:
-const client = createClient({ profile: "chrome-140", events: platform.events });
-try {
-    const r1 = await client.fetch("https://example.com");
-    const r2 = await client.fetch("https://example.com/api", { method: "POST" });
-} finally {
-    await client.close();
-}
-```
 
 ## Browser Impersonation
 
@@ -363,3 +372,17 @@ Contributions are very welcome — and not just code. A great bug report, a fing
 - **Questions?** Ask in [Discussions](https://github.com/jverneuer/browsersmith/discussions) — no wrong questions.
 - **First issue?** Browse [`good first issue`](https://github.com/jverneuer/browsersmith/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 - **Security?** Report privately via [SECURITY.md](SECURITY.md) — never in a public issue.
+
+## License
+
+MIT
+
+---
+
+<div align="center">
+
+🦄 **You found the unicorn.**
+
+It lives at the bottom of this README because almost nobody scrolls this far — since you did, legend says the rest of your day is going to be amazing. That's not a feature, it's a law.
+
+</div>
