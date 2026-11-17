@@ -12,9 +12,40 @@ import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type UdpAddress } from "@browsercore/quic";
-import { type DatagramTransport, Duration } from "@browsercore/contracts";
+import { type DatagramTransport } from "@browsercore/contracts";
 import { CHROME_140 } from "./profiles.js";
 import { platform } from "./wiring.js";
+
+/**
+ * Resolve an optional v2 platform bundle for crawl's full-stack needs.
+ *
+ * Platform bundles are optional as of contracts 0.2.6 (a platform carries
+ * exactly the capabilities its runtime has). crawl() runs the whole stack —
+ * TCP+DNS, crypto, events, clock — so a missing bundle here is a wiring bug,
+ * not a supported configuration: name the missing path and throw.
+ */
+function requireBundle<T>(bundle: T | undefined, path: string): T {
+    if (bundle === undefined) {
+        throw new Error(`crawl() requires platform.${path} — the platform is missing that capability`);
+    }
+    return bundle;
+}
+
+/** Resolved-once views of the bundles crawl() needs (all required here). */
+const stack = {
+    get crypto() {
+        return requireBundle(platform.crypto, "crypto");
+    },
+    get time() {
+        return requireBundle(platform.time, "time");
+    },
+    get events() {
+        return requireBundle(platform.events, "events");
+    },
+    get network() {
+        return requireBundle(platform.network, "network");
+    },
+};
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
@@ -86,7 +117,7 @@ const QUIC_CONNECTION_ID_LEN = 8;
 
 /** Generate a random QUIC connection id of `length` bytes. */
 const randomConnectionId = (length: number): ConnectionId =>
-    makeConnectionId(platform.crypto.provider.randomBytes(length));
+    makeConnectionId(stack.crypto.provider.randomBytes(length));
 
 /** Resolve the UDP address family for a host string (naive IPv6 detection). */
 function familyForHost(host: string): 4 | 6 {
@@ -143,13 +174,14 @@ async function fetchHttp3(
         initialDcid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         initialScid: randomConnectionId(QUIC_CONNECTION_ID_LEN),
         handshakeTimeoutMs,
-        clock: platform.time.clock,
+        clock: stack.time,
     });
 
     const http3 = await connectHttp3({
         quic: quic as unknown as Parameters<typeof connectHttp3>[0]["quic"],
         settingsAckTimeoutMs: handshakeTimeoutMs,
-        events: platform.events,
+        clock: stack.time,
+        events: stack.events,
     });
 
     try {
@@ -218,9 +250,9 @@ export async function crawl(
     const clientOptions: { -readonly [K in keyof FetchClientOptions]: FetchClientOptions[K] } = {
         profile,
         cookieJar: jar,
-        net: platform.network.tcp,
-        dns: platform.network.dns,
-        events: platform.events,
+        net: requireBundle(stack.network.tcp, "network.tcp"),
+        dns: requireBundle(stack.network.dns, "network.dns"),
+        events: stack.events,
     };
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;
@@ -273,7 +305,7 @@ export async function crawl(
                 }
             }
             // oxlint-disable-next-line no-await-in-loop — sequential delay between batches is intentional for politeness
-            await platform.time.scheduler.delay(Duration.milliseconds(delayMs));
+            await stack.time.sleep(delayMs);
         }
     }
     const workers: Promise<void>[] = [];

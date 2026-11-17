@@ -2,19 +2,19 @@
  * Tests for the uncovered error/close paths of the nodeUdp adapter
  * (src/platform/network/node/udp.ts).
  *
- * The happy-path tests live in adapters.test.ts against the real socket
- * singleton. This file covers the paths those tests deliberately avoid:
+ * The happy-path tests live in adapters.test.ts against a real socket. This
+ * file covers the paths those tests deliberately avoid:
  *   - send() rejecting when the underlying socket reports an error
  *   - recv() rejecting when the socket emits "error" instead of "message"
  *   - close() resolving when the OS socket closes
  *
- * Strategy: mock `node:dgram` so we control the socket the adapter wraps.
- * This lets us emit arbitrary events (message, error) and capture the
- * send callback — exercising every branch of the adapter without depending
- * on real OS socket behavior.
+ * Strategy: mock `node:dgram` so we control the socket the factory wraps.
+ * The v2 adapter is a FACTORY — each test first `connect()`s a transport
+ * (the mocked socket binds immediately), then exercises the failing branch.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import type { DatagramTransport } from "@browsercore/contracts";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock references — must be initialized before the vi.mock factory
@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     mockOn: vi.fn(),
     mockOnce: vi.fn(),
     mockOff: vi.fn(),
+    mockBind: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,7 @@ vi.mock("node:dgram", () => ({
         emit: vi.fn(),
         send: mocks.mockSend,
         close: mocks.mockClose,
+        bind: mocks.mockBind,
     }),
 }));
 
@@ -52,10 +54,18 @@ beforeEach(() => {
     mocks.mockOn.mockReset();
     mocks.mockOnce.mockReset();
     mocks.mockOff.mockReset();
+    // connect() binds the fresh socket and awaits the bind callback.
+    mocks.mockBind.mockImplementation((cb: () => void) => cb());
 });
 
 describe("nodeUdp adapter — error and close paths (mocked socket)", () => {
     it("send() rejects when the underlying socket reports a send error", async () => {
+        const udp: DatagramTransport = await nodeUdp.connect({
+            address: "127.0.0.1",
+            port: 9999,
+            family: 4,
+        });
+
         // Capture the callback passed to socket.send() and invoke it with an
         // error — exercises the `reject(err)` branch in send().
         let sendCallback: ((err?: Error | null) => void) | undefined;
@@ -63,7 +73,7 @@ describe("nodeUdp adapter — error and close paths (mocked socket)", () => {
             sendCallback = cb;
         });
 
-        const promise = nodeUdp.send(new Uint8Array([0x01]), {
+        const promise = udp.send(new Uint8Array([0x01]), {
             address: "127.0.0.1",
             port: 9999,
             family: 4,
@@ -77,6 +87,12 @@ describe("nodeUdp adapter — error and close paths (mocked socket)", () => {
     });
 
     it("recv() rejects when the socket emits an error while awaiting a datagram", async () => {
+        const udp: DatagramTransport = await nodeUdp.connect({
+            address: "127.0.0.1",
+            port: 9999,
+            family: 4,
+        });
+
         // Capture the "error" listener registered by recv()'s socket.once("error", ...).
         let errorListener: ((err: Error) => void) | undefined;
         mocks.mockOnce.mockImplementation((event: string, listener: (...args: unknown[]) => void) => {
@@ -85,7 +101,7 @@ describe("nodeUdp adapter — error and close paths (mocked socket)", () => {
             }
         });
 
-        const promise = nodeUdp.recv();
+        const promise = udp.recv();
 
         // The adapter should have registered an error listener.
         expect(errorListener).toBeDefined();
@@ -95,12 +111,18 @@ describe("nodeUdp adapter — error and close paths (mocked socket)", () => {
     });
 
     it("close() resolves when the underlying socket closes", async () => {
+        const udp: DatagramTransport = await nodeUdp.connect({
+            address: "127.0.0.1",
+            port: 9999,
+            family: 4,
+        });
+
         let closeCallback: (() => void) | undefined;
         mocks.mockClose.mockImplementation((cb: () => void) => {
             closeCallback = cb;
         });
 
-        const promise = nodeUdp.close();
+        const promise = udp.close();
 
         expect(closeCallback).toBeDefined();
         closeCallback!();

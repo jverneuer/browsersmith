@@ -53,7 +53,7 @@ export type {
 } from "@browsercore/profiles";
 
 // Cookie jar — persists cookies across requests (session continuity).
-export { createCookieJar, saveJar, loadJar } from "@browsercore/cookies";
+export { createCookieJar, serializeJar, deserializeJar } from "@browsercore/cookies";
 export type { CookieJar, CookieUrl, Cookie } from "@browsercore/cookies";
 
 // Proxy tunnels — HTTP CONNECT and SOCKS5/5h via @browsercore/proxy.
