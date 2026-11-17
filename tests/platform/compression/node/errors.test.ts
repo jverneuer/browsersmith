@@ -179,6 +179,11 @@ describe("ensureCompressionError", () => {
         const cause = new Error("boom");
         const wrapped = ensureCompressionError(cause, "gzip");
         expect(wrapped).toBeInstanceOf(DecompressionError);
+        // The base CompressionError return type carries no `encoding`; the
+        // concrete DecompressionError subclass does — narrow with instanceof.
+        if (!(wrapped instanceof DecompressionError)) {
+            throw new Error("expected a DecompressionError");
+        }
         expect(wrapped.encoding).toBe("gzip");
         expect(wrapped.cause).toBe(cause);
     });
@@ -186,6 +191,9 @@ describe("ensureCompressionError", () => {
     it("wraps a non-Error value as DecompressionError with a synthetic Error cause", () => {
         const wrapped = ensureCompressionError("boom", "br");
         expect(wrapped).toBeInstanceOf(DecompressionError);
+        if (!(wrapped instanceof DecompressionError)) {
+            throw new Error("expected a DecompressionError");
+        }
         expect(wrapped.encoding).toBe("br");
         expect(wrapped.cause).toBeInstanceOf(Error);
         expect((wrapped.cause as Error).message).toBe("boom");
@@ -203,22 +211,25 @@ describe("assertNever", () => {
     it("throws an Error containing the unexpected value", () => {
         // Cast: in correct usage the compiler guarantees `x` is `never`; here we
         // simulate the default branch receiving a value it should never see.
+        let thrown: unknown;
         try {
             assertNever("surprise" as never);
-            throw new Error("expected assertNever to throw");
         } catch (e) {
-            expect(e).toBeInstanceOf(Error);
-            expect((e as Error).message).toContain("Unexpected value");
-            expect((e as Error).message).toContain("surprise");
+            thrown = e;
         }
+        expect(thrown).toBeInstanceOf(Error);
+        expect((thrown as Error).message).toContain("Unexpected value");
+        expect((thrown as Error).message).toContain("surprise");
     });
 
     it("JSON-stringifies the value in the message (objects are visible)", () => {
+        let thrown: unknown;
         try {
             assertNever({ a: 1 } as never);
-            throw new Error("expected assertNever to throw");
         } catch (e) {
-            expect((e as Error).message).toContain('{"a":1}');
+            thrown = e;
         }
+        expect(thrown).toBeInstanceOf(Error);
+        expect((thrown as Error).message).toContain('{"a":1}');
     });
 });

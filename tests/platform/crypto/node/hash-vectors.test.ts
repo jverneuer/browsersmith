@@ -87,7 +87,7 @@ describe("hash properties", () => {
         it(`${hash}: a single-bit input change alters the digest (avalanche at the test level)`, () => {
             const a = new Uint8Array(64).fill(0x00);
             const b = new Uint8Array(64).fill(0x00);
-            b[0] ^= 0x01;
+            b[0] = 0x01;
             expect(copy(digest(a))).not.toEqual(copy(digest(b)));
         });
     }

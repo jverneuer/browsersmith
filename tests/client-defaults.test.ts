@@ -9,10 +9,23 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import type {
+    FetchClient,
+    FetchClientOptions,
+    FetchOptions,
+    FetchResponse,
+} from "@browsercore/fetch";
+import type { Platform } from "../src/platform/index.js";
 
+// Mocks carry the REAL @browsercore/fetch signatures they stand in for, so
+// `mock.calls` entries expose their argument types to the assertions below.
+// Neither mock needs an implementation: no test consumes a return value —
+// they only pin the arguments browsersmith hands to the stack.
 const mocks = vi.hoisted(() => ({
-    stackCreateClient: vi.fn(() => ({ fetch: vi.fn(), close: vi.fn() })),
-    stackFetch: vi.fn(),
+    stackCreateClient: vi.fn<(options?: FetchClientOptions) => FetchClient>(),
+    stackFetch: vi.fn<
+        (input: string, options?: FetchOptions, platform?: Platform) => Promise<FetchResponse>
+    >(),
 }));
 
 vi.mock("@browsercore/fetch", () => ({
@@ -27,7 +40,7 @@ import {
     DEFAULT_PROFILE,
     NO_IMPERSONATION,
 } from "../src/client.js";
-import { createClient as stackCreateClient, fetch as stackFetch } from "@browsercore/fetch";
+import { fetch as stackFetch } from "@browsercore/fetch";
 import { platform } from "../src/wiring.js";
 
 beforeEach(() => {

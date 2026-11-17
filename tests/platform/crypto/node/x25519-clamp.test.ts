@@ -48,7 +48,11 @@ const ZERO = new Uint8Array(32);
  */
 const BIT7_CLEARED = (() => {
     const s = RFC7748_SCALAR.slice();
-    s[31] &= 0x7f;
+    const byte31 = s[31];
+    if (byte31 === undefined) {
+        throw new Error("RFC7748_SCALAR must be 32 bytes long");
+    }
+    s[31] = byte31 & 0x7f;
     return s;
 })();
 
@@ -64,7 +68,11 @@ const BIT7_CLEARED = (() => {
  */
 const ALL_CLAMP_BITS_EXERCISED = (() => {
     const s = RFC7748_SCALAR.slice();
-    s[0] |= 0x07; // set the low 3 bits of byte 0
+    const byte0 = s[0];
+    if (byte0 === undefined) {
+        throw new Error("RFC7748_SCALAR must be 32 bytes long");
+    }
+    s[0] = byte0 | 0x07; // set the low 3 bits of byte 0
     s[31] = 0x84; // bit 7 set, bit 6 clear
     return s;
 })();

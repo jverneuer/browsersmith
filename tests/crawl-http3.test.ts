@@ -40,34 +40,100 @@ vi.mock("@browsercore/http3", () => ({
 
 import { connectQuic } from "@browsercore/quic";
 import { connectHttp3 } from "@browsercore/http3";
-import type { Http3Response } from "@browsercore/http3";
-import type { DatagramTransport, UdpAddress } from "@browsercore/quic";
+import type { ConnectionId, Http3Request, Http3Response } from "@browsercore/http3";
+import type {
+    DatagramCloseReason,
+    DatagramTransport,
+    QuicConnection,
+    QuicStream,
+    UdpAddress,
+} from "@browsercore/quic";
+import { firstResult } from "./fixtures/crawl-results.js";
 
 const mockedConnectQuic = vi.mocked(connectQuic);
 const mockedConnectHttp3 = vi.mocked(connectHttp3);
+
+/** Loopback peer address the fake transport reports datagrams from. */
+const fakeFrom: UdpAddress = { address: "127.0.0.1", port: 443, family: 4 };
 
 /** A minimal fake DatagramTransport — only `id` is read by crawl.ts. */
 function fakeDatagramTransport(): DatagramTransport {
     return {
         id: "fake-dg",
-        send: vi.fn(async () => {}),
-        recv: vi.fn(async () => ({ data: new Uint8Array(), from: { address: "127.0.0.1", port: 443, family: 4 } })),
-        close: vi.fn(async () => {}),
+        send: vi.fn(async (_data: Uint8Array, _address: UdpAddress): Promise<void> => {}),
+        recv: vi.fn(async (): Promise<{ readonly data: Uint8Array; readonly from: UdpAddress }> => ({
+            data: new Uint8Array(),
+            from: fakeFrom,
+        })),
+        close: vi.fn(async (_reason?: DatagramCloseReason): Promise<void> => {}),
     };
 }
 
-/** Build a fake Http3Connection that responds with `statusCode`. */
-function fakeHttp3(statusCode: number, body = new Uint8Array()) {
+/**
+ * Full fake QuicConnection. crawl() hands it straight to the (also mocked)
+ * connectHttp3, so no method is ever driven — but the fake must satisfy the
+ * CURRENT canonical interface surface, not a stale subset.
+ */
+function fakeQuicConnection(): QuicConnection {
+    const unusedStream = async (): Promise<QuicStream> => {
+        throw new Error("fake quic stream is never used in this suite");
+    };
     return {
-        id: "fake-h3",
+        id: "fake-quic",
+        handshake: vi.fn(async (): Promise<void> => {}),
+        openBidirectionalStream: vi.fn(unusedStream),
+        acceptBidirectionalStream: vi.fn(unusedStream),
+        openUnidirectionalStream: vi.fn(unusedStream),
+        acceptUnidirectionalStream: vi.fn(unusedStream),
+        close: vi.fn(async (_errorCode: bigint, _reason: string): Promise<void> => {}),
+        sendPathChallenge: vi.fn((_data: Uint8Array): void => {}),
+        hasPendingPathChallenge: vi.fn((_data: Uint8Array): boolean => false),
+    };
+}
+
+/**
+ * Branded-id narrowing cast, same pattern as the fixtures' TransportId /
+ * FetchRequestId fakes — http3 exports no ConnectionId maker (its ConnectionId
+ * is string-branded, unlike quic's bytes-branded one).
+ */
+const fakeH3Id = "fake-h3" as ConnectionId;
+
+/**
+ * Build a fake Http3Connection that responds with `statusCode`. `request`'s
+ * parameter is typed as Http3Request so recorded mock calls expose the
+ * request for assertions, and the object carries the full current interface
+ * surface (push, goaway(streamId)).
+ */
+function fakeHttp3(statusCode: number, body = new Uint8Array()) {
+    const cannedResponse: Http3Response = {
+        statusCode,
+        headers: new Map([["content-type", "text/plain"]]),
+        body,
+    };
+    return {
+        id: fakeH3Id,
         settings: {},
-        request: vi.fn(async (): Promise<Http3Response> => ({
-            statusCode,
-            headers: new Map([["content-type", "text/plain"]]),
-            body,
-        })),
-        goaway: vi.fn(async () => {}),
-        close: vi.fn(async () => {}),
+        request: vi.fn(async (_req: Http3Request): Promise<Http3Response> => cannedResponse),
+        push: vi.fn(async (): Promise<Http3Response> => cannedResponse),
+        goaway: vi.fn(async (_streamId: bigint): Promise<void> => {}),
+        close: vi.fn(async (): Promise<void> => {}),
+    };
+}
+
+/**
+ * Fake Http3Connection whose request() rejects — for the request-failure
+ * paths. Full current interface surface, same as {@link fakeHttp3}.
+ */
+function failingHttp3(rejection: () => Promise<Http3Response>) {
+    return {
+        id: fakeH3Id,
+        settings: {},
+        request: vi.fn(rejection),
+        push: vi.fn(async (): Promise<Http3Response> => {
+            throw new Error("push is never used in this suite");
+        }),
+        goaway: vi.fn(async (_streamId: bigint): Promise<void> => {}),
+        close: vi.fn(async (): Promise<void> => {}),
     };
 }
 
@@ -83,11 +149,11 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("fetches a URL over HTTP/3 and maps the response into http3Response", async () => {
         const h3 = fakeHttp3(200, new TextEncoder().encode("hello"));
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (_h: string, _p: number): Promise<DatagramTransport> => fakeDatagramTransport());
-        const [r] = await crawl(["https://example.com/path?q=1"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/path?q=1"], { http3: factory }));
 
         // The factory was called for the origin.
         expect(factory).toHaveBeenCalledWith("example.com", 443);
@@ -107,7 +173,7 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("maps request headers + body into the HTTP/3 request", async () => {
         const h3 = fakeHttp3(201);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
@@ -136,7 +202,7 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("rejects http URLs (HTTP/3 requires https)", async () => {
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
-        const [r] = await crawl(["http://example.com/"], { http3: factory });
+        const r = firstResult(await crawl(["http://example.com/"], { http3: factory }));
         expect(r.ok).toBe(false);
         expect(r.error).toContain("https");
         // The factory was never called — the scheme guard short-circuits.
@@ -147,7 +213,7 @@ describe("crawl() — HTTP/3 path", () => {
     it("handles a malformed URL without throwing", async () => {
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
         // A URL that fails new URL() — the path-less ":" triggers a parse error.
-        const [r] = await crawl(["not a url"], { http3: factory });
+        const r = firstResult(await crawl(["not a url"], { http3: factory }));
         expect(r.ok).toBe(false);
         expect(r.error).toMatch(/invalid URL/);
         expect(factory).not.toHaveBeenCalled();
@@ -157,27 +223,21 @@ describe("crawl() — HTTP/3 path", () => {
         const factory = vi.fn(async (): Promise<DatagramTransport> => {
             throw new Error("udp bind failed");
         });
-        const [r] = await crawl(["https://example.com/"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/"], { http3: factory }));
         expect(r.ok).toBe(false);
         expect(r.error).toContain("udp bind failed");
         expect(mockedConnectQuic).not.toHaveBeenCalled();
     });
 
     it("records an http3.request failure as ok:false with an error", async () => {
-        const h3 = {
-            id: "fake-h3",
-            settings: {},
-            request: vi.fn(async (): Promise<Http3Response> => {
-                throw new Error("stream reset");
-            }),
-            goaway: vi.fn(async () => {}),
-            close: vi.fn(async () => {}),
-        };
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        const h3 = failingHttp3(async (): Promise<Http3Response> => {
+            throw new Error("stream reset");
+        });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
-        const [r] = await crawl(["https://example.com/"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/"], { http3: factory }));
         expect(r.ok).toBe(false);
         expect(r.error).toContain("stream reset");
         // The connection was still closed in the finally block.
@@ -186,11 +246,11 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("maps a 4xx HTTP/3 response to ok:false", async () => {
         const h3 = fakeHttp3(404);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
-        const [r] = await crawl(["https://example.com/missing"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/missing"], { http3: factory }));
         expect(r.status).toBe(404);
         expect(r.ok).toBe(false);
         expect(r.http3Response).toBeDefined();
@@ -198,11 +258,11 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("maps a 5xx HTTP/3 response to ok:false", async () => {
         const h3 = fakeHttp3(503);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
-        const [r] = await crawl(["https://example.com/"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/"], { http3: factory }));
         expect(r.status).toBe(503);
         expect(r.ok).toBe(false);
     });
@@ -210,7 +270,7 @@ describe("crawl() — HTTP/3 path", () => {
     it("handles multiple URLs over HTTP/3 (one connection each)", async () => {
         const h3a = fakeHttp3(200);
         const h3b = fakeHttp3(200);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValueOnce(h3a).mockResolvedValueOnce(h3b);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
@@ -228,7 +288,7 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("respects a non-default port from the URL", async () => {
         const h3 = fakeHttp3(200);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (_h: string, _p: number): Promise<DatagramTransport> => fakeDatagramTransport());
@@ -238,7 +298,7 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("passes timeoutMs through to the QUIC handshake", async () => {
         const h3 = fakeHttp3(200);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
@@ -250,7 +310,7 @@ describe("crawl() — HTTP/3 path", () => {
 
     it("passes a Uint8Array body through without re-encoding", async () => {
         const h3 = fakeHttp3(200);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
@@ -268,26 +328,20 @@ describe("crawl() — HTTP/3 path", () => {
         const factory = vi.fn(async (): Promise<DatagramTransport> => {
             throw "raw-string";
         });
-        const [r] = await crawl(["https://example.com/"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/"], { http3: factory }));
         expect(r.ok).toBe(false);
         expect(r.error).toBe("raw-string");
     });
 
     it("closes the connection even when http3.request throws a non-Error", async () => {
-        const h3 = {
-            id: "fake-h3",
-            settings: {},
-            request: vi.fn(async (): Promise<Http3Response> => {
-                throw 42;
-            }),
-            goaway: vi.fn(async () => {}),
-            close: vi.fn(async () => {}),
-        };
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        const h3 = failingHttp3(async (): Promise<Http3Response> => {
+            throw 42;
+        });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
-        const [r] = await crawl(["https://example.com/"], { http3: factory });
+        const r = firstResult(await crawl(["https://example.com/"], { http3: factory }));
         expect(r.ok).toBe(false);
         expect(r.error).toBe("42");
         expect(h3.close).toHaveBeenCalledTimes(1);
@@ -297,7 +351,7 @@ describe("crawl() — HTTP/3 path", () => {
         // The `typeof body === "string"` branch: a string body must be encoded
         // to UTF-8 bytes before being passed to the HTTP/3 layer.
         const h3 = fakeHttp3(200);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());
@@ -316,7 +370,7 @@ describe("crawl() — HTTP/3 path", () => {
         // familyForHost() returns 6 when the host contains ":" (IPv6). An IPv6
         // URL like https://[::1]/ exercises this branch.
         const h3 = fakeHttp3(200);
-        mockedConnectQuic.mockResolvedValue({ id: "fake-quic" });
+        mockedConnectQuic.mockResolvedValue(fakeQuicConnection());
         mockedConnectHttp3.mockResolvedValue(h3);
 
         const factory = vi.fn(async (): Promise<DatagramTransport> => fakeDatagramTransport());

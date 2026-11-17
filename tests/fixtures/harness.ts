@@ -7,7 +7,7 @@
  * in `beforeEach` and {@link teardownHarness} in `afterEach`.
  */
 
-import { createClient, type FetchClient, type FetchOptions } from "@browsercore/fetch";
+import { createClient, type FetchClient, type FetchOptions, type FetchResponse } from "@browsercore/fetch";
 import { createCookieJar, type CookieJar } from "@browsercore/cookies";
 import type { ProfileId } from "@browsercore/profiles";
 import { NodeEventProvider } from "../../src/platform/events/node/event-provider.js";
@@ -75,7 +75,7 @@ export async function setupHarness(options?: {
 }
 
 /** Fetch a path on the fixture via the harness client. */
-export function fetchPath(h: Harness, path: string, options?: FetchOptions): Promise<ReturnType<FetchClient["fetch"]>> {
+export function fetchPath(h: Harness, path: string, options?: FetchOptions): Promise<FetchResponse> {
     return h.client.fetch(`${h.baseUrl}${path}`, options);
 }
 

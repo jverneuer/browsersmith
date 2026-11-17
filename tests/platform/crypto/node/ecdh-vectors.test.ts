@@ -14,11 +14,6 @@ import { NodeCryptoProvider } from "../../../../src/platform/crypto/node/node-cr
 
 const provider = new NodeCryptoProvider();
 
-/** Coerce a node:Buffer / Uint8Array to a standalone Uint8Array for comparison. */
-function bytes(b: Uint8Array): Uint8Array {
-    return new Uint8Array(b);
-}
-
 /**
  * Independent oracle: compute an ECDH shared secret directly via node:crypto,
  * decoupled from the provider under test.

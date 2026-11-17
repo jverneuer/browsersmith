@@ -9,8 +9,6 @@
 import {
     gunzipSync,
     gzipSync,
-    inflateSync,
-    inflateRawSync,
     deflateSync,
     deflateRawSync,
     brotliCompressSync,
@@ -219,6 +217,11 @@ describe("ensureCompressionError", () => {
         const cause = new Error("boom");
         const wrapped = ensureCompressionError(cause, "gzip");
         expect(wrapped).toBeInstanceOf(DecompressionError);
+        // The base CompressionError return type carries no `encoding`; the
+        // concrete DecompressionError subclass does — narrow with instanceof.
+        if (!(wrapped instanceof DecompressionError)) {
+            throw new Error("expected a DecompressionError");
+        }
         expect(wrapped.encoding).toBe("gzip");
         expect(wrapped.cause).toBe(cause);
     });

@@ -17,11 +17,11 @@ import {
 } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { aeadEncrypt, aeadDecrypt } from "../../../../src/platform/crypto/node/aead.js";
+import { aeadEncrypt } from "../../../../src/platform/crypto/node/aead.js";
 import { NodeCryptoProvider, nodeCryptoProvider } from "../../../../src/platform/crypto/node/node-crypto-provider.js";
 import * as cryptoIndex from "@browsercore/crypto";
 import { CryptoError, DecryptError, UnsupportedAlgorithmError, ensureCryptoError } from "@browsercore/crypto";
-import { aes128Gcm, aes256Gcm, chacha20Poly1305, CIPHER_BY_ID, AES_128_CCM } from "../../../../src/platform/crypto/node/ciphers.js";
+import { aes128Gcm, aes256Gcm, chacha20Poly1305, CIPHER_BY_ID } from "../../../../src/platform/crypto/node/ciphers.js";
 import {
     AES_128_GCM,
     AES_256_GCM,
@@ -422,7 +422,10 @@ describe("X25519 key exchange", () => {
                 "hex",
             ),
         );
-        let u = Uint8Array.from(
+        // Bare Uint8Array (= ArrayBufferLike): x25519SharedSecret returns the
+        // provider's view, so the loop variable must not pin the narrower
+        // Uint8Array<ArrayBuffer> inferred from Uint8Array.from.
+        let u: Uint8Array = Uint8Array.from(
             Buffer.from(
                 "e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c",
                 "hex",

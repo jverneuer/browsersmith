@@ -3,7 +3,7 @@
  * for redirect/compression/timeout/abort tests.
  */
 
-import { createClient, type FetchClient, type FetchOptions } from "@browsercore/fetch";
+import { createClient, type FetchClient, type FetchOptions, type FetchResponse } from "@browsercore/fetch";
 import { connectHttp1 } from "@browsercore/http1";
 import type { Transport } from "@browsercore/transport";
 import { connect as connectNet } from "node:net";
@@ -38,7 +38,7 @@ export function fetchBehavior(
     bh: BehaviorHarness,
     path: string,
     options?: FetchOptions,
-): Promise<ReturnType<FetchClient["fetch"]>> {
+): Promise<FetchResponse> {
     return bh.client.fetch(`${bh.baseUrl}${path}`, options);
 }
 

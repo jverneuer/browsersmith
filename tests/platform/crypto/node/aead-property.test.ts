@@ -12,7 +12,8 @@ import { randomBytes as nodeRandomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { NodeCryptoProvider } from "../../../../src/platform/crypto/node/node-crypto-provider.js";
-import { aes128Gcm, aes256Gcm, chacha20Poly1305, type AeadCipher } from "../../../../src/platform/crypto/node/ciphers.js";
+import { aes128Gcm, aes256Gcm, chacha20Poly1305 } from "../../../../src/platform/crypto/node/ciphers.js";
+import type { AeadCipher } from "@browsercore/crypto";
 
 const provider = new NodeCryptoProvider();
 
@@ -22,7 +23,11 @@ const randNonce = (cipher: AeadCipher): Uint8Array => new Uint8Array(nodeRandomB
 /** Flip the least-significant bit of byte `i`, asserting the cipher rejects it. */
 function assertTamperRejected(cipher: AeadCipher, key: Uint8Array, nonce: Uint8Array, ct: Uint8Array, aad: Uint8Array, i: number): void {
     const tampered = new Uint8Array(ct);
-    tampered[i] ^= 0x01;
+    const byte = tampered[i];
+    if (byte === undefined) {
+        throw new Error(`ciphertext must have a byte at index ${i}`);
+    }
+    tampered[i] = byte ^ 0x01;
     expect(() => cipher.decrypt(key, nonce, tampered, aad)).toThrow(/authentication/);
 }
 

@@ -22,7 +22,7 @@ import { nodeCompression } from "../../src/platform/compression/node/index.js";
 import { nodeEventProvider } from "../../src/platform/events/node/index.js";
 import { noOpTelemetry } from "../../src/platform/telemetry/noop/index.js";
 import { nodeTime } from "../../src/platform/time/node/index.js";
-import type { Net, Socket, ConnectOptions } from "@browsercore/contracts";
+import type { Net, Socket, Span } from "@browsercore/contracts";
 import type { Time } from "../../src/platform/time/node/index.js";
 import type { Telemetry } from "../../src/platform/telemetry/noop/index.js";
 import type { EventProvider } from "../../src/platform/events/node/index.js";
@@ -46,21 +46,41 @@ const mockNet: Net = {
 
 const mockTime: Time = {
     now: () => 1_700_000_000_000,
-    monotonicNow: () => 0,
-    setTimeout: () => () => {},
+    monotonic: () => 0,
+    setTimeout: () => ({}),
+    clearTimeout: () => {},
     sleep: () => Promise.resolve(),
 };
 
+// Telemetry is the logger/tracer/metrics aggregate from contracts.
+const mockSpan: Span = {
+    setAttribute: (_key: string, _value: unknown): Span => mockSpan,
+    end: (): void => {},
+};
+
 const mockTelemetry: Telemetry = {
-    record: () => {},
-    measure: () => {},
-    gauge: () => {},
+    logger: {
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+    },
+    tracer: {
+        startSpan: (): Span => mockSpan,
+    },
+    metrics: {
+        add: () => {},
+    },
 };
 
 const mockEvents: EventProvider = {
     on: () => {},
+    once: () => {},
     off: () => {},
+    removeListener: () => {},
     emit: () => false,
+    listenerCount: () => 0,
+    removeAllListeners: () => {},
 };
 
 // ---------------------------------------------------------------------------

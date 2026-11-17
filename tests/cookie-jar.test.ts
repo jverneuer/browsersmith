@@ -21,10 +21,11 @@ import {
     createCookieJar,
     serializeJar,
     deserializeJar,
-    CookieDomainError,
-    CookieParseError,
 } from "../src/index.js";
 import type { CookieJar, CookieUrl } from "../src/index.js";
+// Typed cookie errors come from the cookies package's canonical surface —
+// browsersmith's index re-exports the jar functions but not its error classes.
+import { CookieDomainError, CookieParseError } from "@browsercore/cookies";
 
 /** A URL the jar can match against. */
 function url(hostname: string, pathname = "/", protocol = "http:"): CookieUrl {
