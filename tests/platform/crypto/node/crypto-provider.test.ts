@@ -77,10 +77,12 @@ describe("nodeCryptoProvider", () => {
             // Sanity: a freshly generated keypair is internally consistent —
             // the public key is the scalar mult base of the secret key.
             const kp = nodeCryptoProvider.x25519GenerateKeyPair();
-            const shared = nodeCryptoProvider.x25519SharedSecret(kp.secretKey, kp.publicKey);
-            // x25519(s, base) would give a different point, so we don't assert
-            // against the public key. Instead: a degenerate / all-zero peer must
-            // yield the mandated all-zero shared secret per RFC 7748 §5.
+            // Exercise the (secretKey, own publicKey) input pair; the result is
+            // not asserted against the public key (x25519(s, base) gives a
+            // different point).
+            nodeCryptoProvider.x25519SharedSecret(kp.secretKey, kp.publicKey);
+            // A degenerate / all-zero peer must yield the mandated all-zero
+            // shared secret per RFC 7748 §5.
             const allZero = new Uint8Array(32);
             const degenerate = nodeCryptoProvider.x25519SharedSecret(kp.secretKey, allZero);
             expect(Buffer.from(degenerate).equals(Buffer.from(allZero))).toBe(true);

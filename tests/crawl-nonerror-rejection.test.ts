@@ -21,17 +21,22 @@ vi.mock(import("@browsercore/fetch"), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        createClient: vi.fn(() => ({
+        createClient: vi.fn((): FetchClient => ({
+            // Branded-id narrowing cast, same pattern as the fixtures'
+            // TransportId fakes — fetch exports no FetchRequestId maker.
+            id: "crawl-nonerror-rejection-fake" as FetchRequestId,
             fetch: vi.fn(async (): Promise<never> => {
                 // Throw a non-Error value to exercise the String(err) branch.
                 throw 42;
             }),
-            close: vi.fn(async () => {}),
+            close: vi.fn(async (): Promise<void> => {}),
         })),
     };
 });
 
 import { crawl } from "../src/crawl.js";
+import type { FetchClient, FetchRequestId } from "@browsercore/fetch";
+import { firstResult } from "./fixtures/crawl-results.js";
 
 describe("crawl() — non-Error rejection in catch block", () => {
     beforeEach(() => {
@@ -46,7 +51,7 @@ describe("crawl() — non-Error rejection in catch block", () => {
         // With the mocked fetch client throwing a number (42), the catch
         // block's `err instanceof Error` check fails and `String(err)` is
         // used — producing "42".
-        const [r] = await crawl(["https://example.com/"]);
+        const r = firstResult(await crawl(["https://example.com/"]));
         expect(r.ok).toBe(false);
         expect(r.error).toBe("42");
     });
@@ -56,13 +61,14 @@ describe("crawl() — non-Error rejection in catch block", () => {
         // returns the string itself.
         const { createClient } = await import("@browsercore/fetch");
         vi.mocked(createClient).mockReturnValue({
+            id: "crawl-nonerror-rejection-fake" as FetchRequestId,
             fetch: vi.fn(async (): Promise<never> => {
                 throw "raw-string-from-fetch";
             }),
-            close: vi.fn(async () => {}),
+            close: vi.fn(async (): Promise<void> => {}),
         });
 
-        const [r] = await crawl(["https://example.com/"]);
+        const r = firstResult(await crawl(["https://example.com/"]));
         expect(r.ok).toBe(false);
         expect(r.error).toBe("raw-string-from-fetch");
     });

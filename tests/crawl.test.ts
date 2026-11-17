@@ -19,6 +19,7 @@ import { loopbackTransportFactory } from "./fixtures/fake-transport.js";
 import { crawl } from "../src/crawl.js";
 import { createCookieJar } from "../src/index.js";
 import { PROFILES } from "../src/profiles.js";
+import { firstResult } from "./fixtures/crawl-results.js";
 
 describe("crawl()", () => {
     let server: Server;
@@ -71,7 +72,7 @@ describe("crawl()", () => {
     });
 
     it("records a 404 as ok:false but does not throw", async () => {
-        const [r] = await crawl([`${baseUrl}/nope`], { transportFactory: viaLoopback });
+        const r = firstResult(await crawl([`${baseUrl}/nope`], { transportFactory: viaLoopback }));
         expect(r.ok).toBe(false);
         expect(r.status).toBe(404);
         // A response still came back (the server replied); no error string.
@@ -83,7 +84,7 @@ describe("crawl()", () => {
         // The fixture has no error endpoint, so we simulate a hard failure by
         // targeting a closed port inside the loopback factory below. Here we
         // at least confirm a 4xx/5xx HTTP response stays ok:false.
-        const [r] = await crawl([`${baseUrl}/nope`], { transportFactory: viaLoopback });
+        const r = firstResult(await crawl([`${baseUrl}/nope`], { transportFactory: viaLoopback }));
         expect(r.ok).toBe(false);
         expect(r.status).toBeGreaterThanOrEqual(400);
     });
@@ -96,7 +97,7 @@ describe("crawl()", () => {
         const failing = async (): Promise<never> => {
             throw new Error("simulated connection failure");
         };
-        const [r] = await crawl([landUrl], { transportFactory: failing });
+        const r = firstResult(await crawl([landUrl], { transportFactory: failing }));
         expect(r.ok).toBe(false);
         expect(r.error).toBeTypeOf("string");
         expect(r.error).toContain("simulated connection failure");
@@ -109,7 +110,7 @@ describe("crawl()", () => {
         const throwsString = async (): Promise<never> => {
             throw "raw-string-rejection";
         };
-        const [r] = await crawl([landUrl], { transportFactory: throwsString });
+        const r = firstResult(await crawl([landUrl], { transportFactory: throwsString }));
         expect(r.ok).toBe(false);
         expect(r.error).toBe("raw-string-rejection");
     });
@@ -117,17 +118,17 @@ describe("crawl()", () => {
     it("respects timeoutMs and records the timeout failure", async () => {
         // /slow?ms=500 waits 500ms; a 100ms timeout must fire first.
         const slowUrl = `${baseUrl}/slow?ms=500`;
-        const [r] = await crawl([slowUrl], { transportFactory: viaLoopback, timeoutMs: 100 });
+        const r = firstResult(await crawl([slowUrl], { transportFactory: viaLoopback, timeoutMs: 100 }));
         expect(r.ok).toBe(false);
         expect(r.error?.toLowerCase()).toContain("time");
     });
 
     it("uses a custom profile when provided", async () => {
         // FIREFOX_128 exercises the `profile` branch (not the default CHROME_140).
-        const [r] = await crawl([landUrl], {
+        const r = firstResult(await crawl([landUrl], {
             transportFactory: viaLoopback,
             profile: PROFILES["firefox-128"],
-        });
+        }));
         expect(r.ok).toBe(true);
         expect(r.status).toBe(200);
     });
@@ -157,7 +158,7 @@ describe("crawl()", () => {
 
     it("clamps concurrency to at least 1", async () => {
         // concurrency: 0 → Math.max(1, 0) = 1 worker still runs the batch.
-        const [r] = await crawl([landUrl], { transportFactory: viaLoopback, concurrency: 0 });
+        const r = firstResult(await crawl([landUrl], { transportFactory: viaLoopback, concurrency: 0 }));
         expect(r.ok).toBe(true);
     });
 
@@ -190,15 +191,19 @@ describe("crawl()", () => {
     });
 
     it("creates its own cookie jar when none is provided", async () => {
-        const [r] = await crawl([landUrl], { transportFactory: viaLoopback });
+        const r = firstResult(await crawl([landUrl], { transportFactory: viaLoopback }));
         expect(r.ok).toBe(true); // No jar option needed — one was created internally.
     });
 
     it("skips holes in a sparse URL array (url === undefined guard)", async () => {
         // A sparse array has a hole that reads as `undefined` at runtime. The
         // worker's `url === undefined` guard must skip it without throwing and
-        // leave the result slot for that index unset.
-        const sparse = [landUrl, , landUrl];
+        // leave the result slot for that index unset. Built via new Array so
+        // the value stays a `string[]` (a holey literal would widen to
+        // `(string | undefined)[]`, which crawl()'s contract rejects).
+        const sparse = new Array<string>(3);
+        sparse[0] = landUrl;
+        sparse[2] = landUrl;
         const results = await crawl(sparse, { transportFactory: viaLoopback });
         expect(results).toHaveLength(3);
         expect(results[0]?.ok).toBe(true);

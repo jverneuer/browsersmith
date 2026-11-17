@@ -103,12 +103,13 @@ describe("nodeNet adapter", () => {
 
 /**
  * Collect the next chunk of data from a socket into a Promise.
- * Helpers like this keep the integration tests readable without leaking
- * listeners between assertions.
+ * Uses `on("data")` — the contracts Socket surface reserves `once` for the
+ * connect/close/error lifecycle events; the promise settles on the first
+ * chunk and later resolutions are no-ops.
  */
 function waitForData(socket: Socket): Promise<Uint8Array> {
     return new Promise((resolve) => {
-        socket.once("data", (chunk: Uint8Array) => resolve(chunk));
+        socket.on("data", (chunk: Uint8Array) => resolve(chunk));
     });
 }
 

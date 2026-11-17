@@ -16,6 +16,7 @@
 import { createSocket } from "node:dgram";
 import { afterEach, describe, expect, it } from "vitest";
 import { nodeUdp } from "../../../../src/platform/network/node/index.js";
+import type { UdpAddress } from "@browsercore/contracts";
 
 /** Peer sockets opened by a test — closed afterwards so workers exit. */
 const openedPeerSockets: { close(): Promise<void> }[] = [];
@@ -26,7 +27,10 @@ async function loopbackPeer(family: 4 | 6): Promise<{ port: number; address: str
     openedPeerSockets.push({ close: () => new Promise((resolve) => socket.close(() => resolve())) });
     await new Promise<void>((resolve, reject) => {
         socket.once("error", reject);
-        socket.bind(family === 6 ? "::1" : "127.0.0.1", () => {
+        // Explicit (port 0, address) form: dgram's typed overloads have no
+        // bare (address, callback) signature — port 0 keeps the ephemeral
+        // bind this helper has always produced at runtime.
+        socket.bind(0, family === 6 ? "::1" : "127.0.0.1", () => {
             socket.off("error", reject);
             resolve();
         });
@@ -90,7 +94,7 @@ describe("nodeUdp factory — independent sockets per connect()", () => {
         const second = await nodeUdp.connect(LOOPBACK_PEER);
 
         const peer = await loopbackPeer(4);
-        const target = { address: peer.address, port: peer.port, family: 4 };
+        const target: UdpAddress = { address: peer.address, port: peer.port, family: 4 };
 
         // Fire both sends before reading anything — a shared underlying
         // socket would serialize or mix these; two sockets deliver both.

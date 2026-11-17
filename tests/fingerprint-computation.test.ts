@@ -21,6 +21,7 @@ import {
     buildExpectedClientHello,
     cipherSuiteToWire,
     CIPHER_GREASE_PLACEHOLDER,
+    CIPHER_SUITE_CODES,
     NAMED_GROUP_CODES,
     SIGNATURE_SCHEME_CODES,
     VERSION_CODES,
@@ -40,8 +41,46 @@ const expected: ClientHelloExpected = buildExpectedClientHello(
  * the exact bytes fetch() puts on the wire (modulo record framing, which the
  * testing parsers accept either way).
  */
-import { buildClientHello, generateKeyShares, TLS_1_3 } from "@browsercore/tls";
+import {
+    buildClientHello,
+    generateKeyShares,
+    TLS_1_3,
+    type CipherSuite,
+    type ClientHelloConfig,
+    type NamedGroup,
+    type SignatureScheme,
+} from "@browsercore/tls";
 import { platform } from "../src/wiring.js";
+
+// Validated string→union narrowing for the profile→TLS boundary — the same
+// pattern @browsercore/fetch's internal profileToTlsConfig uses (profiles
+// types its name lists as bare strings; the TLS layer's config demands the
+// literal unions). Membership is checked against the canonical profiles code
+// tables, so an unknown name throws instead of hashing garbage.
+const KNOWN_CIPHER_SUITES = new Set<string>(Object.keys(CIPHER_SUITE_CODES));
+const KNOWN_NAMED_GROUPS = new Set<string>(Object.keys(NAMED_GROUP_CODES));
+const KNOWN_SIGNATURE_SCHEMES = new Set<string>(Object.keys(SIGNATURE_SCHEME_CODES));
+
+function asCipherSuite(value: string): CipherSuite {
+    if (!KNOWN_CIPHER_SUITES.has(value)) {
+        throw new Error(`invalid cipher suite in profile: ${value}`);
+    }
+    return value as CipherSuite;
+}
+
+function asNamedGroup(value: string): NamedGroup {
+    if (!KNOWN_NAMED_GROUPS.has(value)) {
+        throw new Error(`invalid key-share group in profile: ${value}`);
+    }
+    return value as NamedGroup;
+}
+
+function asSignatureScheme(value: string): SignatureScheme {
+    if (!KNOWN_SIGNATURE_SCHEMES.has(value)) {
+        throw new Error(`invalid signature algorithm in profile: ${value}`);
+    }
+    return value as SignatureScheme;
+}
 
 async function buildHelloBytes(): Promise<Uint8Array> {
     const profile = getProfile(PROFILES["chrome-140"]);
@@ -51,18 +90,17 @@ async function buildHelloBytes(): Promise<Uint8Array> {
         const [hi, lo] = provider.randomBytes(2);
         return ((hi ?? 0) * 256 + (lo ?? 0)) / 65536;
     };
-    const config = {
-        cipherSuites: profile.tls.cipherSuites,
-        keyShareGroups: profile.tls.keyShareGroups,
-        signatureAlgorithms: profile.tls.signatureAlgorithms,
+    const config: ClientHelloConfig = {
+        cipherSuites: profile.tls.cipherSuites.map(asCipherSuite),
+        keyShareGroups: profile.tls.keyShareGroups.map(asNamedGroup),
+        signatureAlgorithms: profile.tls.signatureAlgorithms.map(asSignatureScheme),
         supportedVersions: [TLS_1_3],
         extensionOrder: profile.tls.extensionOrder,
         grease: profile.tls.grease,
         serverName: "example.com",
         alpnProtocols: ["h2", "http/1.1"],
     };
-    const hello = buildClientHello(config, keyPairs, rng, provider);
-    const message = hello.bytes ?? hello;
+    const message = buildClientHello(config, keyPairs, rng, provider);
     // Wrap the handshake message in a TLS record header — the testing
     // package's JA4 parser expects record-framed input (JA3 accepts either).
     const record = new Uint8Array(5 + message.length);
@@ -75,8 +113,7 @@ async function buildHelloBytes(): Promise<Uint8Array> {
     return record;
 }
 
-const builtHello: { bytes: Uint8Array } = { bytes: await buildHelloBytes() };
-const buildHello = (): { bytes: Uint8Array } => builtHello;
+const builtHello: Uint8Array = await buildHelloBytes();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Wire projection integrity — every profile name resolves to an IANA code
@@ -105,14 +142,14 @@ describe("fingerprint computation: profile → wire projection", () => {
         // Chrome 131+ shares only the PQ hybrid + x25519 in key_share; the
         // NIST curves project onto the advertised supported_groups superset.
         expect(expected.keyShareGroups).toEqual([
-            NAMED_GROUP_CODES.X25519MLKEM768,
-            NAMED_GROUP_CODES.x25519,
+            NAMED_GROUP_CODES["X25519MLKEM768"],
+            NAMED_GROUP_CODES["x25519"],
         ]);
         expect(expected.keyShareAdvertisedGroups).toEqual([
-            NAMED_GROUP_CODES.X25519MLKEM768,
-            NAMED_GROUP_CODES.x25519,
-            NAMED_GROUP_CODES.secp256r1,
-            NAMED_GROUP_CODES.secp384r1,
+            NAMED_GROUP_CODES["X25519MLKEM768"],
+            NAMED_GROUP_CODES["x25519"],
+            NAMED_GROUP_CODES["secp256r1"],
+            NAMED_GROUP_CODES["secp384r1"],
         ]);
     });
 
@@ -122,9 +159,9 @@ describe("fingerprint computation: profile → wire projection", () => {
 
     it("projects signature algorithms to their IANA codes", () => {
         expect(expected.signatureAlgorithms[0])
-            .toBe(SIGNATURE_SCHEME_CODES.ecdsa_secp256r1_sha256);
+            .toBe(SIGNATURE_SCHEME_CODES["ecdsa_secp256r1_sha256"]);
         expect(expected.signatureAlgorithms)
-            .toContain(SIGNATURE_SCHEME_CODES.rsa_pss_rsae_sha256);
+            .toContain(SIGNATURE_SCHEME_CODES["rsa_pss_rsae_sha256"]);
     });
 
     it("projects supported versions to their IANA codes", () => {
@@ -149,7 +186,9 @@ describe("fingerprint computation: ClientHello structural counts", () => {
 
     it("leads cipher codes with a GREASE-pattern value (0x?a?a)", () => {
         const first = expected.cipherSuites[0];
-        expect(first).toBeDefined();
+        if (first === undefined) {
+            throw new Error("chrome-140 must advertise at least one cipher suite");
+        }
         expect((first >> 8) & 0xff).toBe(first & 0xff);
         expect(first).toBeGreaterThanOrEqual(0x0a0a);
     });
@@ -222,15 +261,15 @@ async function importTesting(): Promise<typeof import("@browsercore/testing")> {
 describe("fingerprint computation: JA3 hash", () => {
     it("computeJa3 produces a stable hash across builds (randomized fields excluded by construction)", async () => {
         const { computeJa3 } = await importTesting();
-        const first = computeJa3(builtHello.bytes);
-        const second = computeJa3(buildHello().bytes);
+        const first = computeJa3(builtHello);
+        const second = computeJa3(builtHello);
         expect(first).toMatch(/^[0-9a-f]{32}$/);
         expect(second).toBe(first);
     });
 
     it("JA3 input string has the expected structure", async () => {
         const { parseClientHello } = await importTesting();
-        const seg = parseClientHello(builtHello.bytes);
+        const seg = parseClientHello(builtHello);
         // TLS 1.2 record version on the wire (JA3 uses the legacy version 771).
         expect(seg.version).toBe("771");
         // GREASE-stripped, dash-joined, order as sent (the parser keeps
@@ -271,12 +310,12 @@ describe("fingerprint computation: JA3 hash", () => {
 describe("fingerprint computation: JA4 hash", () => {
     it("computeJa4 matches the real-Chrome golden JA4 EXACTLY", async () => {
         const { computeJa4 } = await importTesting();
-        expect(computeJa4(builtHello.bytes)).toBe(GOLD_JA4);
+        expect(computeJa4(builtHello)).toBe(GOLD_JA4);
     });
 
     it("JA4 cipher/extension counts and segments match the projection", async () => {
         const { computeJa4 } = await importTesting();
-        const ja4 = computeJa4(builtHello.bytes);
+        const ja4 = computeJa4(builtHello);
         const [prefix, cipherHash, extSigHash] = ja4.split("_");
         // t13 = TLS 1.3, d = SNI present, 15 = cipher count, 16 = extension
         // count (GREASE excluded), h2 = ALPN — exactly real Chrome 146.

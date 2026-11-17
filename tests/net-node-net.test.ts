@@ -9,33 +9,56 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Socket as NodeSocket } from "node:net";
 
-// Mock node:net before importing the adapter so the mock is in place.
-vi.mock("node:net", () => ({
-    connect: vi.fn(),
+/**
+ * The single `node:net.connect` call shape the adapter exercises: options
+ * object in, socket out. Declared so the mock's recorded calls and return
+ * values are fully typed (node:net's connect is overloaded).
+ */
+type NetConnectMock = (options: {
+    readonly host: string;
+    readonly port: number;
+    readonly noDelay?: boolean;
+    readonly localAddress?: string;
+    readonly family?: number;
+}) => NodeSocket;
+
+// vi.hoisted runs before vi.mock's hoisted factory executes, so the mock is
+// initialized when the factory dereferences it (a plain const would be TDZ).
+const { mockNetConnect } = vi.hoisted(() => ({
+    mockNetConnect: vi.fn<NetConnectMock>(() => {
+        throw new Error("node:net.connect mock not configured for this test");
+    }),
 }));
 
-import { connect as netConnect } from "node:net";
-import { nodeNet } from "../../src/platform/network/node/index.js";
+vi.mock("node:net", () => ({
+    connect: mockNetConnect,
+}));
+
+import { nodeNet } from "../src/platform/network/node/index.js";
 import type { Socket, ConnectOptions } from "@browsercore/contracts";
 
-const mockedConnect = vi.mocked(netConnect);
-
-/** Minimal fake socket that satisfies the @browsercore/contracts Socket interface. */
-function createFakeSocket(): Socket {
+/**
+ * Minimal fake socket covering the members nodeNet passes through and the
+ * tests assert on. The one `as unknown as NodeSocket` below (third-party
+ * boundary) is justified: node:net's Socket surface is far larger than the
+ * contracts slice this adapter relays, and the mock replaces it wholesale.
+ */
+function createFakeSocket() {
     return {
-        write: vi.fn<["write"]>().mockReturnValue(true),
-        end: vi.fn<["end"]>(),
-        destroy: vi.fn<["destroy"]>(),
+        write: vi.fn((_data: Uint8Array, _cb?: (err?: Error | null) => void): boolean => true),
+        end: vi.fn((): void => {}),
+        destroy: vi.fn((_error?: Error): void => {}),
         destroyed: false,
-        once: vi.fn<["once"]>(),
-        on: vi.fn<["on"]>(),
-    } as unknown as Socket;
+        once: vi.fn((_event: "connect" | "close" | "error", _listener: () => void): void => {}),
+        on: vi.fn((_event: string, _listener: (...args: unknown[]) => void): void => {}),
+    };
 }
 
 describe("nodeNet adapter", () => {
     beforeEach(() => {
-        mockedConnect.mockReset();
+        mockNetConnect.mockReset();
     });
 
     afterEach(() => {
@@ -44,7 +67,7 @@ describe("nodeNet adapter", () => {
 
     it("delegates to node:net.connect with mapped options", () => {
         const fakeSocket = createFakeSocket();
-        mockedConnect.mockReturnValueOnce(fakeSocket as unknown as ReturnType<typeof netConnect>);
+        mockNetConnect.mockReturnValueOnce(fakeSocket as unknown as NodeSocket);
 
         const options: ConnectOptions = {
             host: "example.com",
@@ -56,7 +79,7 @@ describe("nodeNet adapter", () => {
 
         const result = nodeNet.connect(options);
 
-        expect(mockedConnect).toHaveBeenCalledWith({
+        expect(mockNetConnect).toHaveBeenCalledWith({
             host: "example.com",
             port: 443,
             noDelay: true,
@@ -68,7 +91,7 @@ describe("nodeNet adapter", () => {
 
     it("maps all ConnectOptions fields correctly (including optional ones)", () => {
         const fakeSocket = createFakeSocket();
-        mockedConnect.mockReturnValueOnce(fakeSocket as unknown as ReturnType<typeof netConnect>);
+        mockNetConnect.mockReturnValueOnce(fakeSocket as unknown as NodeSocket);
 
         const options: ConnectOptions = {
             host: "api.example.com",
@@ -77,7 +100,7 @@ describe("nodeNet adapter", () => {
 
         const result = nodeNet.connect(options);
 
-        expect(mockedConnect).toHaveBeenCalledWith({
+        expect(mockNetConnect).toHaveBeenCalledWith({
             host: "api.example.com",
             port: 8080,
             noDelay: undefined,
@@ -89,14 +112,14 @@ describe("nodeNet adapter", () => {
 
     it("returns a socket that satisfies the Socket interface", () => {
         const fakeSocket = createFakeSocket();
-        mockedConnect.mockReturnValueOnce(fakeSocket as unknown as ReturnType<typeof netConnect>);
+        mockNetConnect.mockReturnValueOnce(fakeSocket as unknown as NodeSocket);
 
         const options: ConnectOptions = {
             host: "example.com",
             port: 443,
         };
 
-        const socket = nodeNet.connect(options);
+        const socket: Socket = nodeNet.connect(options);
 
         // Verify the socket has the required methods per the Socket contract.
         expect(typeof socket.write).toBe("function");
@@ -109,7 +132,7 @@ describe("nodeNet adapter", () => {
 
     it("passes options through without mutation", () => {
         const fakeSocket = createFakeSocket();
-        mockedConnect.mockReturnValueOnce(fakeSocket as unknown as ReturnType<typeof netConnect>);
+        mockNetConnect.mockReturnValueOnce(fakeSocket as unknown as NodeSocket);
 
         const options: ConnectOptions = {
             host: "example.com",
@@ -129,7 +152,7 @@ describe("nodeNet adapter", () => {
 
     it("handles IPv6 family option", () => {
         const fakeSocket = createFakeSocket();
-        mockedConnect.mockReturnValueOnce(fakeSocket as unknown as ReturnType<typeof netConnect>);
+        mockNetConnect.mockReturnValueOnce(fakeSocket as unknown as NodeSocket);
 
         const options: ConnectOptions = {
             host: "ipv6.example.com",
@@ -139,7 +162,7 @@ describe("nodeNet adapter", () => {
 
         const result = nodeNet.connect(options);
 
-        expect(mockedConnect).toHaveBeenCalledWith(
+        expect(mockNetConnect).toHaveBeenCalledWith(
             expect.objectContaining({ family: 6 }),
         );
         expect(result).toBe(fakeSocket);
