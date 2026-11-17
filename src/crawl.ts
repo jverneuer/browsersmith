@@ -13,7 +13,7 @@ import type { ProfileId } from "@browsercore/profiles";
 import { connectHttp3, type Http3Response } from "@browsercore/http3";
 import { connectQuic, makeConnectionId, type ConnectionId, type UdpAddress } from "@browsercore/quic";
 import { type DatagramTransport } from "@browsercore/contracts";
-import { CHROME_140 } from "./profiles.js";
+import { resolveProfile } from "./client.js";
 import { defaultTlsHandshakeEngine, platform } from "./wiring.js";
 
 /**
@@ -47,8 +47,8 @@ const stack = {
 
 /** Options for {@link crawl}. */
 export interface CrawlOptions {
-    /** Browser profile to impersonate. Defaults to chrome-140. */
-    readonly profile?: ProfileId;
+    /** Browser profile to impersonate. Defaults to chrome-140; pass "none" for the bare runtime stack. */
+    readonly profile?: ProfileId | "none";
     /** Shared cookie jar (one is created if omitted). */
     readonly cookieJar?: CookieJar;
     /** Per-request fetch options merged into every call (headers, etc.). */
@@ -240,7 +240,7 @@ export async function crawl(
     urls: readonly string[],
     options?: CrawlOptions,
 ): Promise<CrawlResult[]> {
-    const profile = options?.profile ?? CHROME_140;
+    const profile = resolveProfile(options?.profile);
     const jar = options?.cookieJar ?? createCookieJar();
     const delayMs = options?.delayMs ?? 0;
     const concurrency = options?.concurrency ?? DEFAULT_CONCURRENCY;
@@ -252,10 +252,12 @@ export async function crawl(
     // seam): it resolves net/dns/events/crypto/compression from it — crypto
     // included, which the real-TCP path requires for the TLS handshake.
     const clientOptions: { -readonly [K in keyof FetchClientOptions]: FetchClientOptions[K] } = {
-        profile,
         cookieJar: jar,
         platform,
     };
+    if (profile !== undefined) {
+        clientOptions.profile = profile;
+    }
     if (options?.transportFactory !== undefined) {
         clientOptions.transportFactory = options.transportFactory;
     }
