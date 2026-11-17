@@ -109,9 +109,9 @@ Be honest about limits: no fingerprint beats every detector. Some targets also d
 
 browsersmith composes with the usual suspects. The repo's `INTEGRATIONS.md` has per-framework details; the short version:
 
-- **Crawlee** — wire browsersmith in as a `Crawler` transport for URLs that need fingerprint matching.
+- **Crawlee** — wire browsersmith in as a `Crawler` transport for URLs that need fingerprint matching. The ready-made client is [`@browsercore/crawlee`](https://www.npmjs.com/package/@browsercore/crawlee) — see [crawlee.md](./crawlee.md).
 - **Firecrawl** — swap the fetch backend.
 - **Cheerio** — `cheerio.load(await res.text())` on any browsersmith response body.
 - **Stagehand / Browser Use** — pair browsersmith with a real browser for JS-heavy targets, browsersmith for the rest.
 
-`crawl()` is just a helper — for retries, queues, dedupe, robots.txt, compose with Crawlee or your own.
+`crawl()` is just a helper — for retries, queues, dedupe, robots.txt, compose with Crawlee or your own. For the drop-in Crawlee HTTP client, see [crawlee.md](./crawlee.md).

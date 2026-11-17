@@ -6,7 +6,7 @@ browsersmith is a TypeScript-native, pure-JavaScript HTTP client that pins TLS, 
 
 | Project | Language / Runtime | TLS JA3/JA4 | HTTP/2 (SETTINGS, HEADERS-order) | HTTP/3 + QUIC | Cookies | Serverless / Lambda | Native modules | JS runtime stealth | Active maintenance |
 |---|---|---|---|---|---|---|---|---|---|
-| **browsersmith** | TypeScript, Node ≥26 | ✅ (chrome-140, firefox-128) | ✅<sup>1</sup> | ⚠️<sup>2</sup> | ✅ (CookieJar, `saveJar`/`loadJar`) | ✅ (pure TS, ESM) | None | ❌ | ✅ |
+| **browsersmith** | TypeScript, Node ≥26 | ✅ (chrome-140, firefox-128, safari-17/18 + 6 more) | ✅<sup>1</sup> | ⚠️<sup>2</sup> | ✅ (CookieJar, `saveJar`/`loadJar`, multi `Set-Cookie` fidelity) | ✅ (pure TS, ESM) | None | ❌ | ✅ |
 | **curl-impersonate** | C/C++ binary + wrappers | ✅ (21 presets, golden YAMLs) | ✅ (`CURLOPT_HTTP2_PSEUDO_HEADERS_ORDER` + SETTINGS) | ❌ | ✅ (libcurl cookie engine) | ❌ (native binary + BoringSSL/NSS) | Yes (BoringSSL, NSS, libnghttp2) | ❌ | ⚠️<sup>3</sup> |
 | **curl_cffi** | Python 3.10+ (cffi FFI) | ✅ (JA3 / JA4R + 51+ presets) | ✅ (`akamai=`, `extra_fp` dict) | ✅<sup>4</sup> | ✅ (Session + CookieJar) | ⚠️ (10–20 MB wheel + C load) | Yes (bundled libcurl-impersonate) | ❌ | ✅ |
 | **got-scraping** | TypeScript, Node ≥16 | ❌ | ❌ | ❌ | ❌ (delegated to got) | ✅ (pure JS) | None | ❌ | ❌ (EOL) |
